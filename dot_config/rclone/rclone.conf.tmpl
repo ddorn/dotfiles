@@ -13,11 +13,11 @@ scope = drive
 service_account_file = ~/prog/ML4G2.0/meta/service_account_token.json
 team_drive =
 
-[tigris]
+[tigris camille]
 type = s3
 provider = AWS
-access_key_id = {{ (bitwarden "item" "tigris-s3").login.username }}
-secret_access_key = {{ (bitwarden "item" "tigris-s3").login.password }}
+access_key_id = {{ (bitwarden "item" "tigris-s3-camille").login.username }}
+secret_access_key = {{ (bitwarden "item" "tigris-s3-camille").login.password }}
 endpoint = https://fly.storage.tigris.dev
 region = auto
 env_auth = false
