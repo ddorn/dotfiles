@@ -1,0 +1,10 @@
+#ignore-empty-password
+image=/home/diego/background.png
+scaling=fill
+color=F7ECD6
+inside-color=F6EDD4A0
+ring-color=F6EDD4
+key-hl-color=6F2301
+bs-hl-color=FF0000
+line-color=6F2301
+separator-color=6F2301

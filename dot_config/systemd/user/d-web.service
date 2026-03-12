@@ -1,0 +1,11 @@
+[Unit]
+Description=Text fixer and various tools made with streamlit.
+
+[Service]
+Type=simple
+ExecStart=/home/diego/prog/all/scripts/scripts/d web --server.port 9000 --server.headless True --server.runOnSave True
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

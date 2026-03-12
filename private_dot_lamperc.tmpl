@@ -1,0 +1,4 @@
+{{- if eq .chezmoi.hostname "pando" -}}
+bridgeuser="{{ (bitwarden "item" "philips-hue").login.password }}"
+bridgeip="{{ (bitwarden "item" "philips-hue").login.username }}"
+{{ end -}}

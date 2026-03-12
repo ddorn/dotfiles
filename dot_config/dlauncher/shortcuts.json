@@ -1,0 +1,99 @@
+[
+
+
+  {
+    "command": "timeout 30m watch shutdown -c && notify-send 'Time to shut down now :D'",
+    "shortcut": "!",
+    "name": "!shutdown for 30min",
+    "color": "sky"
+  },
+  {
+    "command": "timeout 1h watch --interval 60 systemctl restart --user focus-helper.service",
+    "shortcut": "@",
+    "name": "no focus helper",
+    "color": "sky"
+  },
+
+
+  {
+    "command": "alacritty --class speech2text --command ~/.config/sway/2text -l en",
+    "shortcut": "r",
+    "name": "Speech 2 text",
+    "color": "purple"
+  },
+  {
+    "command": "alacritty --class speech2text --command ~/.config/sway/2text -l fr",
+    "shortcut": "f",
+    "name": "Speech 2 text (fr)",
+    "color": "purple"
+  },
+  {
+    "command": "alacritty --class translate --command ~/.config/sway/translate",
+    "shortcut": "t",
+    "name": "Translate",
+    "color": "purple"
+  },
+  {
+    "command": "wl-paste | sed 's/^\\(- \\|\\t\\|-$\\)//g' | wl-copy",
+    "shortcut": "l",
+    "name": "Logseq clip clean",
+    "color": "purple"
+  },
+
+  {
+    "command": "~/.config/sway/emoji-picker.sh",
+    "shortcut": "e",
+    "name": "Emoji",
+    "color": "orange"
+  },
+  {
+    "command": "alacritty --command nvim ~/.config/dlauncher/shortcuts.json",
+    "shortcut": "E",
+    "name": "Edit shortcuts",
+    "color": "orange"
+  },
+  {
+    "command": "alacritty --command nvim ~/.config/sway/config",
+    "shortcut": "S",
+    "name": "Edit sway config",
+    "color": "orange"
+  },
+
+  {
+    "command": "swaymsg -t get_outputs |jq '[.[] | select(.active == true)] | .[(map(.focused) | index(true) + 1) % length].name' |xargs swaymsg move workspace to",
+    "shortcut": "o",
+    "name": "Switch output",
+    "color": "yellow"
+  },
+  {
+    "command": "alacritty --command /home/diego/prog/less-is-more/mk-background.py",
+    "shortcut": "b",
+    "name": "Reroll Background",
+    "color": "yellow"
+  },
+
+  {
+    "command": "grim -g \"$(slurp -d)\" - | wl-copy",
+    "shortcut": "s",
+    "name": "Screenshot",
+    "color": "green"
+  },
+  {
+    "command": "grim - | wl-copy",
+    "shortcut": "w",
+    "name": "Screenshot Full",
+    "color": "green"
+  },
+  {
+    "command": "grim -g \"$(slurp -p)\" -t ppm - | convert - -format '%[pixel:p{0,0}]' txt:- | tail -n 1 | cut -d \" \" -sf 4 | wl-copy --trim-newline",
+    "shortcut": "c",
+    "name": "Color Picker",
+    "color": "green"
+  },
+  {
+    "command": "flameshot gui",
+    "shortcut": "[",
+    "name": "FlameShot",
+    "color": "green"
+  }
+]

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+BACKGROUND_FILE="$HOME/background.png"
+IMG=$1
+
+# If the first argument is empty, pick a random image
+if [ -z "$IMG" ]; then
+    # pick a random image from the ~/Pictures/background-*.png files
+    IMG=$(find "$HOME/Pictures" -name "background-*.png" | shuf -n 1)
+fi
+
+# If the image doesn't exist, list the available images
+if [ ! -f "$IMG" ]; then
+    echo "Available images:"
+    find "$HOME/Pictures" -name "background-*.png" | sed 's/^/  /' | sort
+    exit 1
+fi
+
+# If image is not a png, convert it to a png
+if [ "${IMG: -4}" != ".png" ]; then
+    convert "$IMG" "$BACKGROUND_FILE"
+else
+    cp "$IMG" "$BACKGROUND_FILE"
+fi
+
+# Reload sway to update the background
+swaymsg reload
+
+# If a second argument is given, save the background to that name
+if [ -n "$2" ]; then
+    newname="$HOME/Pictures/background-$2.png"
+    if [ -f "$newname" ]; then
+        echo "File already exists: $newname"
+        exit 1
+    else
+        cp "$BACKGROUND_FILE" "$newname"
+    fi
+fi

@@ -1,0 +1,30 @@
+run_at:
+# - at: 0m
+#   cmd: notify-send "Pucoti" "Time's up!"
+- at: -1m
+  cmd: swaylock
+- at: -4m
+  cmd: swaylock -i /home/diego/Pictures/go-meditate.png
+  every: 4m
+- at: 9999h
+  cmd_type: python
+  cmd: |-
+    from pucoti.activity_tracker import log_activity
+    log_activity(1)
+  every: 1s
+
+social:
+  # To share your timer with others
+  # enabled: true  # default: false
+  room: the-cabin
+  username: 'diego'
+  send_purpose: true
+  server: 'https://pucoti.therandom.space'
+#
+# window:
+#   start_small: true
+#   resizable: false
+
+# color:
+#   background: [100, 100, 100]
+telemetry: false

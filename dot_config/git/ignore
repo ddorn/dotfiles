@@ -1,0 +1,9 @@
+.env
+.envrc
+.idea
+.stfolder
+.stignore
+.venv
+venv
+
+**/.claude/settings.local.json

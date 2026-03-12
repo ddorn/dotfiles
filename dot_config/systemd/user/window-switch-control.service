@@ -1,0 +1,11 @@
+[Unit]
+Description=Monitor number of window changes
+
+[Service]
+Type=simple
+ExecStart=/home/diego/.config/sway/switcher-control.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

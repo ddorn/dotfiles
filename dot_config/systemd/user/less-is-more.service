@@ -1,0 +1,5 @@
+[Unit]
+Description=Run less-is-more background command
+
+[Service]
+ExecStart=/home/diego/prog/all/less-is-more/mk-background.py

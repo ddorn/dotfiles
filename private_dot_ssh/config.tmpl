@@ -1,0 +1,36 @@
+{{ if eq .role "personal-laptop" -}}
+Host pine
+    User root
+    Hostname pine.fsn.as212024.net
+    ProxyCommand ssh -W %h:%p root@nucleus.fsn.as212024.net
+
+Host aur.archlinux.org
+  IdentityFile ~/.ssh/aur
+  User aur
+
+Host hetzner-storage
+   User u438720
+   Hostname u438720.your-storagebox.de
+   Port 23
+
+Host rsyncnet
+    User zh2012
+    Hostname zh2012.rsync.net
+
+Host abuelo
+    Hostname 192.168.1.42
+    Port 12321
+
+Host rpi-co2
+    Hostname 192.168.1.4
+    User pi
+
+Host brimmon
+    User diego
+    Hostname 195.154.119.162
+
+{{ end -}}
+
+{{ if eq .role "work-laptop" -}}
+# Work-specific hosts go here
+{{ end -}}

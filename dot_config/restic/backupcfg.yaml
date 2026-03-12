@@ -1,0 +1,25 @@
+remotes:
+  rsyncnet:
+    url: sftp:zh2012@zh2012.rsync.net:backups
+    quota: ssh rsyncnet quota
+  hetzner-storage:
+    url: sftp:hetzner-storage:backups
+    quota: ssh hetzner-storage df -h
+  abuelo:
+    url: sftp:abuelo:backups
+    quota: ssh abuelo df -h /mnt/jacky ~
+
+machines:
+  pando:
+    directories_to_backup:
+      - /home/diego
+    remotes:
+      - rsyncnet
+      - hetzner-storage
+
+  abuelo:
+    directories_to_backup:
+      - /home/diego
+      - /mnt/jacky
+    remotes:
+      - hetzner-storage

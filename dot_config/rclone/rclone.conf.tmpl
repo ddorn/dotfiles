@@ -1,0 +1,23 @@
+[hetzner]
+type = sftp
+host = u438720.your-storagebox.de
+user = u438720
+port = 23
+shell_type = unix
+key_file = ~/.ssh/id_rsa
+
+[ml4g teacher folder gdrive]
+type = drive
+client_id = 109906329788060533109
+scope = drive
+service_account_file = ~/prog/ML4G2.0/meta/service_account_token.json
+team_drive =
+
+[tigris]
+type = s3
+provider = AWS
+access_key_id = {{ (bitwarden "item" "tigris-s3").login.username }}
+secret_access_key = {{ (bitwarden "item" "tigris-s3").login.password }}
+endpoint = https://fly.storage.tigris.dev
+region = auto
+env_auth = false

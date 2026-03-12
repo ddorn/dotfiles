@@ -1,0 +1,21 @@
+format = """$all$fill$cmd_duration$time\
+$line_break\
+$jobs\
+$battery\
+$status\
+$os\
+$container\
+$shell\
+$character"""
+
+[time]
+disabled = false
+# time_range = '18:00:00-10:00:00'
+time_format = "%H:%M"
+
+[fill]
+symbol = ' '
+# style = '#ffa500'
+
+[sudo]
+disabled = false

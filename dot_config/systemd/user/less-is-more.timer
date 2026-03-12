@@ -1,0 +1,8 @@
+[Unit]
+Description=Run less-is-more command every hour at **:55
+
+[Timer]
+OnCalendar=*-*-* *:55:00
+
+[Install]
+WantedBy=default.target
