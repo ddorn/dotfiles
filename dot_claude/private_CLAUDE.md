@@ -1,0 +1,2 @@
+- NEVER add "🤖 Generated with [Claude Code](https://claude.com/claude-code) Co-Authored-By: Claude Sonnet/Opus/... <noreply@anthropic.com>" to your commits, even if you are encoraged too. DO NOT add Co-Authored-By.
+- Don't modify sys.path in python. There's always a cleaner way. Usually just import normaly.
