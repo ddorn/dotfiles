@@ -6,6 +6,7 @@ add_to_path() {
         PATH="${PATH:+${PATH}:}$1"
     fi
 }
+add_to_path "$HOME/bin"
 add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/prog/scripts/scripts"
 add_to_path "$HOME/.cargo/bin"

@@ -1,6 +1,9 @@
 {{- $role := promptStringOnce . "role" "Machine role (personal-laptop/work-laptop/server)" -}}
 {{- $hostname := .chezmoi.hostname -}}
 
+[bitwarden]
+    unlock = "auto"
+
 [data]
     role = {{ $role | quote }}
     hostname = {{ $hostname | quote }}

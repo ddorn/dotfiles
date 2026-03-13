@@ -34,3 +34,23 @@
     url = "https://vault.bitwarden.com/download/?app=cli&platform=linux"
     path = "bw"
     executable = true
+
+{{- if eq .role "work-laptop" }}
+
+[".local/share/ranger"]
+    type = "archive"
+    url = "https://ranger.fm/ranger-stable.tar.gz"
+    exact = true
+    stripComponents = 1
+    refreshPeriod = "720h"
+
+{{- $bat := gitHubLatestRelease "sharkdp/bat" }}
+
+[".local/bin/bat"]
+    type = "archive-file"
+    url = "https://github.com/sharkdp/bat/releases/download/{{ $bat.TagName }}/bat-{{ $bat.TagName }}-x86_64-unknown-linux-musl.tar.gz"
+    path = "bat-{{ $bat.TagName }}-x86_64-unknown-linux-musl/bat"
+    executable = true
+    refreshPeriod = "720h"
+
+{{- end }}
