@@ -71,6 +71,9 @@ for_window [app_id="firefox-esr" title="^$"] floating enable
     # Reload the configuration file
     bindsym $mod+Shift+c reload
 
+    # Lock
+    bindsym $mod+Shift+x exec swaylock
+
     # Sticky toggle
     bindsym $mod+shift+s sticky toggle
 
@@ -265,8 +268,7 @@ for_window [app_id="Slack"] move container to workspace $chat_workspace
 # Scale Framework display
 output eDP-1 scale 1.25
 
-# Screen lock & idle management
-bindsym $mod+Shift+x exec swaylock
+# idle management
 exec swayidle -w \
          timeout 300 'swaylock -f -c 000000' \
          timeout 1200 'systemctl hibernate' \
