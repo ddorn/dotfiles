@@ -1,330 +1,163 @@
 #!/bin/zsh
 
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
-
-# Path to your oh-my-zsh installation.
-export ZSH="/home/diego/.oh-my-zsh"
-
-# Helper function to add directories to PATH
+# ── PATH ─────────────────────────────────────────────────────────────────────
 add_to_path() {
     if [[ -d "$1" ]] && [[ ! "$PATH" == *"$1"* ]]; then
         PATH="${PATH:+${PATH}:}$1"
     fi
 }
-
-# Add custom paths
 add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/prog/scripts/scripts"
 add_to_path "$HOME/.cargo/bin"
 add_to_path "$HOME/.npm-global/bin"
-
-# to have lake accessible. This not nice, as elan should do it automatically.
-# path+=('/home/diego/.elan/toolchains/leanprover--lean4---stable/bin')
 export PATH
 
+# ── ENVIRONMENT ──────────────────────────────────────────────────────────────
 export HOST=$(cat /etc/hostname)
 
-# For backups with restic
 export RESTIC_REPOSITORY="sftp:zh2012@zh2012.rsync.net:backups"
-if [ -f /home/diego/.config/restic/password ]; then
-    export RESTIC_PASSWORD_FILE="/home/diego/.config/restic/password"
-fi
+[[ -f ~/.config/restic/password ]] && export RESTIC_PASSWORD_FILE="$HOME/.config/restic/password"
 
 HISTSIZE=999999999
 SAVEHIST=$HISTSIZE
 
-# Set name of the theme to load --- if set to "random", it will
-# load a random theme each time oh-my-zsh is loaded, in which case,
-# to know which specific one was loaded, run: echo $RANDOM_THEME
-# See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
+export PNPM_HOME="$HOME/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+
+export EPHEMERAL_DST="$HOME/.cache/ephemeral-cache"
+export FZF_DEFAULT_OPTS='--layout=reverse --border'
+bgnotify_threshold=60
+
+# ── OH-MY-ZSH ────────────────────────────────────────────────────────────────
+export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="robbyrussell"
-
-# Set list of themes to pick from when loading at random
-# Setting this variable when ZSH_THEME=random will cause zsh to load
-# a theme from this variable instead of looking in $ZSH/themes/
-# If set to an empty array, this variable will have no effect.
-# ZSH_THEME_RANDOM_CANDIDATES=( "robbyrussell" "agnoster" )
-
-# Uncomment the following line to use case-sensitive completion.
-# CASE_SENSITIVE="true"
-
-# Uncomment the following line to use hyphen-insensitive completion.
-# Case-sensitive completion must be off. _ and - will be interchangeable.
-# HYPHEN_INSENSITIVE="true"
-
-# Uncomment the following line to disable bi-weekly auto-update checks.
-# DISABLE_AUTO_UPDATE="true"
-
-# Uncomment the following line to automatically update without prompting.
-# DISABLE_UPDATE_PROMPT="true"
-
-# Uncomment the following line to change how often to auto-update (in days).
-# export UPDATE_ZSH_DAYS=13
-
-# Uncomment the following line if pasting URLs and other text is messed up.
-# DISABLE_MAGIC_FUNCTIONS="true"
-
-# Uncomment the following line to disable colors in ls.
-# DISABLE_LS_COLORS="true"
-
-# Uncomment the following line to disable auto-setting terminal title.
-# DISABLE_AUTO_TITLE="true"
-
-# Uncomment the following line to enable command auto-correction.
-# ENABLE_CORRECTION="true"
-
-# Uncomment the following line to display red dots whilst waiting for completion.
-# You can also set it to another string to have that shown instead of the default red dots.
-# e.g. COMPLETION_WAITING_DOTS="%F{yellow}waiting...%f"
-# Caution: this setting can cause issues with multiline prompts in zsh < 5.7.1 (see #5765)
 COMPLETION_WAITING_DOTS="true"
 
-# Uncomment the following line if you want to disable marking untracked files
-# under VCS as dirty. This makes repository status check for large repositories
-# much, much faster.
-# DISABLE_UNTRACKED_FILES_DIRTY="true"
-
-# Uncomment the following line if you want to change the command execution time
-# stamp shown in the history command output.
-# You can set one of the optional three formats:
-# "mm/dd/yyyy"|"dd.mm.yyyy"|"yyyy-mm-dd"
-# or set a custom format using the strftime function format specifications,
-# see 'man strftime' for details.
-# HIST_STAMPS="mm/dd/yyyy"
-
-# Would you like to use another custom folder than $ZSH/custom?
-# ZSH_CUSTOM=/path/to/new-custom-folder
-
-
-
-# Which plugins would you like to load?
-# Standard plugins can be found in $ZSH/plugins/
-# Custom plugins may be added to $ZSH_CUSTOM/plugins/
-# Example format: plugins=(rails git textmate ruby lighthouse)
-# Add wisely, as too many plugins slow down shell startup.
-bgnotify_threshold=60  # seconds
-#
-# export FZF_DEFAULT_OPTS='--height 60% --layout=reverse --border'
-export FZF_DEFAULT_OPTS='--layout=reverse --border'
-
 plugins=(
-	git
-	sudo  # Twice escape to add sudo at the start
-	copyfile  # provides copyfile cmd
+    git
+    sudo                  # double-escape prepends sudo to current line
+    copyfile              # copyfile <file> copies file contents to clipboard
     colored-man-pages
-    fancy-ctrl-z  # Ctrl+z reopen bg job
-    # To install history-substring-search:
-    # git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
+    fancy-ctrl-z          # Ctrl+Z reopens the last backgrounded job
     history-substring-search
     fzf
 )
-
-# Load some plugins only on laptop machines.
 {{- if hasSuffix "laptop" .role }}
-plugins+=(
-    # command-not-found
-    bgnotify  # Notification when jobs longer than $bgnotify_threshold end
-)
+plugins+=(bgnotify)       # desktop notification when long job finishes (>${bgnotify_threshold}s)
 {{- end }}
 
-# zsh_pluggins_dir = either /usr/share/zsh/plugins or /usr/share/ depending on the distro
-if [ -d /usr/share/zsh/plugins ]; then
-    zsh_plugins_dir=/usr/share/zsh/plugins
-else
-    zsh_plugins_dir=/usr/share/
-fi
+# Source community plugins before oh-my-zsh.
+# These are managed by chezmoi via .chezmoiexternal.toml → ~/.oh-my-zsh/custom/plugins/
+_zsh_custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
+source "$_zsh_custom/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+source "$_zsh_custom/zsh-autosuggestions/zsh-autosuggestions.zsh"
 
-source $zsh_plugins_dir/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source $zsh_plugins_dir/zsh-autosuggestions/zsh-autosuggestions.zsh
+source "$ZSH/oh-my-zsh.sh"
 
-source $ZSH/oh-my-zsh.sh
+# ── PROMPT & SHELL TOOLS ─────────────────────────────────────────────────────
+eval "$(starship init zsh)"
 
 {{- if eq .chezmoi.hostname "pando" }}
-# function command_not_found_handler {
-#     local purple='\e[1;35m' bright='\e[0;1m' green='\e[1;32m' reset='\e[0m'
-#     printf 'zsh: command not found: %s\n' "$1"
-#     local entries=(
-#         ${(f)"$(/usr/bin/pacman -F --machinereadable -- "/usr/bin/$1")"}
-#     )
-#     if (( ${#entries[@]} ))
-#     then
-#         printf "${bright}$1${reset} may be found in the following packages:\n"
-#         local pkg
-#         for entry in "${entries[@]}"
-#         do
-#             # (repo package version file)
-#             local fields=(
-#                 ${(0)entry}
-#             )
-#             if [[ "$pkg" != "${fields[2]}" ]]
-#             then
-#                 printf "${purple}%s/${bright}%s ${green}%s${reset}\n" "${fields[1]}" "${fields[2]}" "${fields[3]}"
-#             fi
-#             printf '    /%s\n' "${fields[4]}"
-#             pkg="${fields[2]}"
-#         done
-#     fi
-#     return 127
-# }
-
-# For the jump utility to move quickly between dirs. See https://github.com/gsamokovarov/jump.
 eval "$(jump shell)"
 {{- end }}
 
-# Starship prompt
-eval "$(starship init zsh)"
-
-# Setup direnv
+# direnv hook — uses whatever direnv is in PATH (works for both /usr/bin and ~/.local/bin)
 _direnv_hook() {
-  trap -- '' SIGINT
-  eval "$("/usr/bin/direnv" export zsh)"
-  trap - SIGINT
+    trap -- '' SIGINT
+    eval "$(command direnv export zsh)"
+    trap - SIGINT
 }
 typeset -ag precmd_functions
-if (( ! ${precmd_functions[(I)_direnv_hook]} )); then
-  precmd_functions=(_direnv_hook $precmd_functions)
-fi
+(( ! ${precmd_functions[(I)_direnv_hook]} )) && precmd_functions=(_direnv_hook $precmd_functions)
 typeset -ag chpwd_functions
-if (( ! ${chpwd_functions[(I)_direnv_hook]} )); then
-  chpwd_functions=(_direnv_hook $chpwd_functions)
-fi
+(( ! ${chpwd_functions[(I)_direnv_hook]} )) && chpwd_functions=(_direnv_hook $chpwd_functions)
 
-# You may need to manually set your language environment
-# export LANG=en_US.UTF-8
-
-# Preferred editor for local and remote sessions
-# if [[ -n $SSH_CONNECTION ]]; then
-#   export EDITOR='nvim'
-# else
-#   export EDITOR='mvim'
-# fi
-
-# Compilation flags
-# export ARCHFLAGS="-arch x86_64"
-
-unalias md  # from some zsh extension
-md () {
-	mkdir -p "$1"
-	cd "$1"
-}
-
-compress-mp4 () {
-    ffmpeg -i "$1" -vcodec libx265 -crf 28 "compressed-$1"
-}
-
-{{- if hasSuffix "laptop" .role }}
-# Mirror current output to the other monitor
-mirror() {
-    focused_output=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
-    other_output=$(swaymsg -t get_outputs | jq -r --arg focused "$focused_output" '.[] | select(.name != $focused) | .name' | head -n 1)
-    if [ -z "$other_output" ]; then
-        echo "No other output found"
-        return
-    fi
-    wl-mirror $focused_output &!
-    sleep 0.5
-    swaymsg '[app_id="wl_mirror"]' move output $other_output
-    swaymsg '[app_id="wl_mirror"]' fullscreen
-}
-{{- end }}
-
-
-# If nvim installed, use it as default editor
+# ── EDITOR ───────────────────────────────────────────────────────────────────
 if command -v nvim > /dev/null; then
     export EDITOR=nvim
-    alias vi=nvim
-    alias vim=nvim
-else;
-    # otherwise use vim
+    alias vi=nvim vim=nvim
+else
     export EDITOR=vim
 fi
 
-alias "day=date +%Y-%m-%d"
-alias rm=rm -I
-alias mv=mv -i
+# ── FUNCTIONS ────────────────────────────────────────────────────────────────
+unalias md 2>/dev/null
+md() { mkdir -p "$1" && cd "$1" }
+
+compress-mp4() { ffmpeg -i "$1" -vcodec libx265 -crf 28 "compressed-$1" }
+
+{{- if hasSuffix "laptop" .role }}
+# Mirror the focused output to another monitor via wl-mirror
+mirror() {
+    local focused other
+    focused=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
+    other=$(swaymsg -t get_outputs | jq -r --arg f "$focused" '.[] | select(.name != $f) | .name' | head -n 1)
+    if [[ -z "$other" ]]; then echo "No other output found"; return 1; fi
+    wl-mirror "$focused" &!
+    sleep 0.5
+    swaymsg "[app_id=\"wl_mirror\"]" move output "$other"
+    swaymsg "[app_id=\"wl_mirror\"]" fullscreen
+}
+{{- end }}
+
+# ── ALIASES ──────────────────────────────────────────────────────────────────
+alias day='date +%Y-%m-%d'
+alias rm='rm -I'
+alias mv='mv -i'
 alias r=ranger
-alias "$"="true &&"
-alias "#"=sudo
+alias '$'='true &&'
+alias '#'=sudo
 alias py=ptpython
-# backuplist: show files >1MB that would be backed up
+alias tree='tree --gitignore'
+alias grep='grep --color=auto --exclude-dir={.bzr,CVS,.git,.hg,.svn,.idea,.tox,.venv}'
+alias zshrc='vim ~/.zshrc && source ~/.zshrc'
+alias ephemeral='~/prog/all/ephemeral/ephemeral | grep -v "already a symlink"'
+alias receipe="python -c \"import random as r; print('Receipe p.' + str(r.choice(list(range(15, 150)) + list(range(172, 204)))))\""
 {{- if eq .chezmoi.hostname "hyperion" }}
-alias backuplist="du -X ~/restic_exclude ~ /etc/nginx -h -t 1M | sort -h"
+alias backuplist='du -X ~/restic_exclude ~ /etc/nginx -h -t 1M | sort -h'
 {{- else }}
-alias backuplist="du -X ~/.config/restic/exclude ~ -h -t 1M | sort -h"
+alias backuplist='du -X ~/.config/restic/exclude ~ -h -t 1M | sort -h'
 {{- end }}
 {{- if hasSuffix "laptop" .role }}
 alias scale='swaymsg output "*" scale'
 alias qwerty="swaymsg input '*' xkb_layout fr"
 alias azerty="swaymsg input '*' xkb_layout us"
 {{- end }}
-alias receipe="python -c \"import random as r; print('Receipe p.' + str(r.choice(list(range(15, 150)) + list(range(172, 204)))))\""
-# alias zshrc="vim ~/.zshrc && source ~/.zshrc && scp ~/.zshrc sprig.therandom.space:.zshrc"
-alias zshrc="vim ~/.zshrc && source ~/.zshrc"
-alias tree="tree --gitignore"
-alias grep="grep --color=auto --exclude-dir={.bzr,CVS,.git,.hg,.svn,.idea,.tox,.venv}"
 
-export EPHEMERAL_DST=/home/diego/.cache/ephemeral-cache
-alias ephemeral='~/prog/all/ephemeral/ephemeral | grep -v "already a symlink"'
+# ── COMPLETION ───────────────────────────────────────────────────────────────
+autoload -Uz compinit
+zstyle ':completion:*' menu select
+fpath+=~/.zfunc
+compinit
+unset -f d  # conflicts with the personal 'all' navigation script
 
+# ── STARTUP ──────────────────────────────────────────────────────────────────
 {{- if hasSuffix "laptop" .role }}
-# Start sway on login
-if [ -z $DISPLAY ] && [ "$(tty)" = "/dev/tty1" ]; then
+# Launch sway automatically on tty1 login
+if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
     export SDL_VIDEODRIVER=wayland
     export _JAVA_AWT_WM_NONREPARENTING=1
     export QT_QPA_PLATFORM=wayland
     export XDG_CURRENT_DESKTOP=sway
     export XDG_SESSION_DESKTOP=sway
-    # So that firefox uses wayland when xwayland is also available
     export MOZ_ENABLE_WAYLAND=1
-    # So that flameshot scales correctly. See https://github.com/flameshot-org/flameshot/issues/227
     export QT_SCREEN_SCALE_FACTORS="0.66666;1"
     export ELECTRON_OZONE_PLATFORM_HINT=wayland
-
     exec sway
 fi
 {{- end }}
 
-autoload -Uz compinit
-zstyle ':completion:*' menu select
-fpath+=~/.zfunc
-compinit
-
-# Conflicts with my script for all stuff
-# It was defined to show/switch dirs
-unset -f d
-
-# Transluce monorepo setup
-# export TRANSLUCE_HOME=/home/diego/prog/2024/clarity
-# source $TRANSLUCE_HOME/lib/lucepkg/scripts/shellenv.sh
-
-# . "$HOME/.cargo/env"
-
-# pnpm
-export PNPM_HOME="/home/diego/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
-
-backup_snooze_file=.cache/backups/dont_ask_for_backup_until  # e.g. 2024-12-28T19:00:22.950168
-# If snoozed, don't run the backup script. The script updates this file when needed.
-# The file may not exist or be empty, in which case the backup will run.
-if [ -f $backup_snooze_file ] && [ $(date -d $(cat $backup_snooze_file) +%s) -gt $(date +%s) ]; then
-    # echo "Backup snoozed until $(cat $backup_snooze_file)"
-else
-    # Don't run backup if CURSOR_AGENT=1 (in the cursor agent)
-    if [ "$CURSOR_AGENT" != "1" ]; then
-        ~/.config/restic/backup.py backup --if-needed
-    fi
+# Run backup if not snoozed and not inside a Cursor agent
+_backup_snooze=~/.cache/backups/dont_ask_for_backup_until
+if [[ -f $_backup_snooze ]] && (( $(date -d $(cat $_backup_snooze) +%s) > $(date +%s) )); then
+    :
+elif [[ "$CURSOR_AGENT" != "1" ]]; then
+    ~/.config/restic/backup.py backup --if-needed
 fi
 
-# Check if /home is low on disk space (<= 500Mb)
-# If so, notify the user
-if [ -d /home/diego ]; then
-    free_space=$(df -m /home/diego | awk 'NR==2 {print $4}')
-    if [ "$free_space" -lt 500 ]; then
-        notify-send "Low disk space" "Only $free_space Mb left on /home/diego"
-    fi
-fi
+# Warn if /home is low on disk space
+_free_space=$(df -m "$HOME" | awk 'NR==2 {print $4}')
+(( _free_space < 500 )) && notify-send "Low disk space" "Only ${_free_space}Mb left on $HOME"

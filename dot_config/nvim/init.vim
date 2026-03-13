@@ -37,14 +37,9 @@ set clipboard+=unnamed " Yanks/cut/deletes are put in the selection clipboard
 nnoremap Q :qa
 
 nnoremap <leader>d /<<<<<<< <cr>zz
-nnoremap <leader>1 dd/=======
-V/>>>>>>>
-d/<<<<<<<
-zz
-nnoremap <leader>2 ddV/=======
-d/>>>>>>>
-dd/<<<<<<<
-zz
+nnoremap <leader>1 dd/=======<CR>V/>>>>>>> <CR>d/<<<<<<< <CR>zz
+nnoremap <leader>2 ddV/=======<CR>d/>>>>>>> <CR>dd/<<<<<<< <CR>zz
+
 
 " Ignore case unless use a capital in search (smartcase needs ignore set)
 set ignorecase
