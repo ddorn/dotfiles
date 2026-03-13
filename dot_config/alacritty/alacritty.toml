@@ -197,7 +197,7 @@ size = 12.0
 builtin_box_drawing = true
 
 [font.normal]
-family = "monospace" -> Monaco
+family = "monospace"  # -> Monaco
 # family = "MesloLGS NF"
 style = "Regular"
 
