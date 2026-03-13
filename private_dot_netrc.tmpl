@@ -1,3 +1,3 @@
 machine api.wandb.ai
   login user
-  password {{ (bitwardenFields "item" "wandb").api_key.value }}
+  password {{ .secrets.wandb_api_key }}

@@ -1,5 +1,5 @@
 [settings]
-api_key = {{ (bitwarden "item" "wakatime-api-key").login.password }}
+api_key = {{ .secrets.wakatime_api_key }}
 
 [internal]
 backoff_retries = 1
