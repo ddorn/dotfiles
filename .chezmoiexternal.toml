@@ -37,6 +37,12 @@
 
 {{- if eq .role "work-laptop" }}
 
+[".local/bin/sway-launcher-desktop.sh"]
+    type = "file"
+    url = "https://raw.githubusercontent.com/Biont/sway-launcher-desktop/main/sway-launcher-desktop.sh"
+    executable = true
+    refreshPeriod = "720h"
+
 [".local/share/ranger"]
     type = "archive"
     url = "https://ranger.fm/ranger-stable.tar.gz"
