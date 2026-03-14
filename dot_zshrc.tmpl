@@ -17,7 +17,6 @@ export PATH
 export HOST=$(cat /etc/hostname)
 
 export RESTIC_REPOSITORY="sftp:zh2012@zh2012.rsync.net:backups"
-[[ -f ~/.config/restic/password ]] && export RESTIC_PASSWORD_FILE="$HOME/.config/restic/password"
 
 HISTSIZE=999999999
 SAVEHIST=$HISTSIZE

@@ -26,7 +26,6 @@ secrets = {
     "wandb_api_key":                    next(f["value"] for f in bw_item("wandb")["fields"] if f["name"] == "api_key"),
     "overleaf_git_password":            bw("get", "password", "overleaf-git"),
     "wakatime_api_key":                 bw("get", "password", "wakatime-api-key"),
-    "restic_password":                  bw("get", "password", "restic backups"),
     "tigris_camille_access_key_id":     tigris["login"]["username"],
     "tigris_camille_secret_access_key": tigris["login"]["password"],
 }

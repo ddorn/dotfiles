@@ -34,8 +34,7 @@ app = typer.Typer(no_args_is_help=True, add_completion=False)
 
 CONFIG_DIR = Path("/home/diego/.config/restic")
 CONFIG_FILE = CONFIG_DIR / "backupcfg.yaml"
-SCRIPT_FILE = CONFIG_DIR / "backup.py"
-RESTIC_PASSWORD_FILE = CONFIG_DIR / "password"
+SCRIPT_FILE = Path.home() / ".local" / "bin" / "backup"
 EXCLUDE_FILE = CONFIG_DIR / "exclude"
 SYSTEMD_SERVICE = CONFIG_DIR / "backup.service"
 SYSTEMD_TIMER = CONFIG_DIR / "backup.timer"
@@ -51,7 +50,6 @@ DONT_ASK_FOR_BACKUP_FILE = DATA_DIR / "dont_ask_for_backup_until"
 ALL_CODE_FILES = [
     CONFIG_FILE,
     SCRIPT_FILE,
-    RESTIC_PASSWORD_FILE,
     EXCLUDE_FILE,
     SYSTEMD_SERVICE,
     SYSTEMD_TIMER,
@@ -357,7 +355,7 @@ def env(remote: str):
     config = BackupConfig.read()
     remote_url = config.get_remote(remote).url
     print(f"export RESTIC_REPOSITORY={remote_url}")
-    print(f"export RESTIC_PASSWORD_FILE={RESTIC_PASSWORD_FILE}")
+    print(f"export RESTIC_PASSWORD={get_restic_password()}")
 
 
 def get_list_of_big_directories(threshold: str = "50M") -> dict[str, int]:
@@ -407,19 +405,33 @@ def save_explicitly_installed_packages():
         rprint(f"[yellow]Warning: Could not get explicitly installed packages: {e}")
 
 
+@cache
+def get_restic_password() -> str:
+    """Fetch the restic password from the environment or Bitwarden."""
+    if password := os.environ.get("RESTIC_PASSWORD"):
+        return password
+    rprint("[yellow]Unlocking Bitwarden...")
+    session = subprocess.check_output(["bw", "unlock", "--raw"], text=True).strip()
+    return subprocess.check_output(
+        ["bw", "get", "password", "restic backups", "--session", session],
+        text=True,
+    ).strip()
+
+
 def call_restic(remote: str, *args: str | Path):
     config = BackupConfig.read()
     remote_url = config.get_remote(remote).url
+
+    env = os.environ.copy()
+    env["RESTIC_PASSWORD"] = get_restic_password()
 
     cmd: list[str | Path] = [
         "restic",
         "-r",
         remote_url,
-        "--password-file",
-        RESTIC_PASSWORD_FILE,
         *args,
     ]
-    return run(cmd)
+    return run(cmd, env=env)
 
 
 def copy_script_to(machine: str):
@@ -449,7 +461,7 @@ def deploy():
         copy_script_to(machine)
 
 
-def run(command: Sequence[str | Path], hide_output: bool = False, dry_run: bool = False):
+def run(command: Sequence[str | Path], hide_output: bool = False, dry_run: bool = False, env: dict | None = None):
 
     command = [str(arg) for arg in command]
 
@@ -465,7 +477,7 @@ def run(command: Sequence[str | Path], hide_output: bool = False, dry_run: bool 
     if dry_run:
         return 0
     else:
-        return subprocess.check_call(command, stdout=stdout)
+        return subprocess.check_call(command, stdout=stdout, env=env)
 
 
 def check_output(command: list[str | Path]):
