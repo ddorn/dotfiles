@@ -39,7 +39,7 @@
 
 [".local/bin/sway-launcher-desktop.sh"]
     type = "file"
-    url = "https://raw.githubusercontent.com/Biont/sway-launcher-desktop/main/sway-launcher-desktop.sh"
+    url = "https://raw.githubusercontent.com/Biont/sway-launcher-desktop/master/sway-launcher-desktop.sh"
     executable = true
     refreshPeriod = "720h"
 

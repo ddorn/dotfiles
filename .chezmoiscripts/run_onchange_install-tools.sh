@@ -76,8 +76,9 @@ prompt_install "direnv" \
 prompt_install "fzf" \
     'command -v fzf' \
     'git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-~/.fzf/install --no-bash --no-fish --no-update-rc' \
-    'git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install --no-bash --no-fish --no-update-rc'
+~/.fzf/install --no-bash --no-fish --no-update-rc
+ln -sf ~/.fzf/bin/fzf ~/.local/bin/fzf' \
+    'git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install --no-bash --no-fish --no-update-rc && ln -sf ~/.fzf/bin/fzf ~/.local/bin/fzf'
 
 # ── Claude Code ───────────────────────────────────────────────────────────────
 prompt_install "Claude Code" \

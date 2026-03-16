@@ -16,7 +16,7 @@ set $scripts /home/diego/.config/sway
 {{ if eq .role "personal-laptop" -}}
 set $term alacritty
 {{ else if eq .role "work-laptop" -}}
-set $term foot
+set $term foot -e .local/bin/zsh
 {{ end }}
 # Your preferred application launcher
 {{ if eq .role "personal-laptop" -}}
@@ -24,7 +24,7 @@ for_window [app_id="^launcher$"] floating enable, sticky enable, resize set 30 p
 set $menu exec $term --class=launcher -e env FZF_DEFAULT_OPTS="--layout=reverse" sway-launcher-desktop
 {{ else if eq .role "work-laptop" -}}
 for_window [app_id="^launcher$"] floating enable, sticky enable, resize set 30 ppt 60 ppt, border pixel 10
-set $menu exec $term -a launcher -e env FZF_DEFAULT_OPTS="--layout=reverse" TERMINAL_COMMAND="foot -e" sway-launcher-desktop.sh
+set $menu exec sh -c '[ -x $HOME/.local/bin/sway-launcher-desktop.sh ] && foot --app-id=launcher -e env FZF_COMMAND=$HOME/.local/bin/fzf FZF_DEFAULT_OPTS=--layout=reverse $HOME/.local/bin/sway-launcher-desktop.sh || dmenu_run'
 {{ end }}
 
 ##############################################################################
@@ -32,7 +32,11 @@ set $menu exec $term -a launcher -e env FZF_DEFAULT_OPTS="--layout=reverse" TERM
 ##############################################################################
 
 ### Output configuration
+{{ if eq .role "personal-laptop" -}}
 output * bg /home/diego/background.png fill #F7ECD6
+{{ else -}}
+output * bg #000000 solid_color
+{{ end -}}
 
 ### Input configuration
 input * {
@@ -355,6 +359,9 @@ exec gammastep
 # WORK LAPTOP
 ##############################################################################
 {{ if eq .role "work-laptop" }}
+# Display layout: big monitor (DP-2) on the left, small (DP-1) on the right
+output DP-2 pos 0 0
+output DP-1 pos 2560 0
 {{ end -}}
 
 include /etc/sway/config.d/*
