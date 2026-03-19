@@ -1,0 +1,58 @@
+#!/bin/bash
+# Non-interactive shell: bail out early
+[[ $- != *i* ]] && return
+
+# ── HISTORY ──────────────────────────────────────────────────────────────────
+HISTSIZE=999999999
+HISTFILESIZE=999999999
+HISTCONTROL=ignoredups:erasedups
+shopt -s histappend
+# Persist history across sessions after each command (set before starship so it appends)
+PROMPT_COMMAND='history -a; history -c; history -r'
+
+# ── SHELL OPTIONS ─────────────────────────────────────────────────────────────
+shopt -s checkwinsize   # keep LINES/COLUMNS up to date
+shopt -s globstar       # ** matches recursively
+
+# ── COMPLETION ───────────────────────────────────────────────────────────────
+if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+    source /usr/share/bash-completion/bash_completion
+elif [[ -f /etc/bash_completion ]]; then
+    source /etc/bash_completion
+fi
+
+# ── COLORED MAN PAGES ────────────────────────────────────────────────────────
+export LESS_TERMCAP_mb=$'\e[1;31m'
+export LESS_TERMCAP_md=$'\e[1;36m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;32m'
+
+# ── PROMPT & SHELL TOOLS ─────────────────────────────────────────────────────
+eval "$(starship init bash)"
+
+{{- if eq .chezmoi.hostname "pando" }}
+eval "$(jump shell bash)"
+{{- end }}
+
+if command -v direnv &>/dev/null; then
+    eval "$(direnv hook bash)"
+fi
+
+# fzf keybindings + completion (Ctrl+R, Ctrl+T, Alt+C)
+if command -v fzf &>/dev/null; then
+    eval "$(fzf --bash 2>/dev/null)" || {
+        [[ -f /usr/share/fzf/key-bindings.bash ]] && source /usr/share/fzf/key-bindings.bash
+        [[ -f /usr/share/fzf/completion.bash ]]   && source /usr/share/fzf/completion.bash
+    }
+fi
+
+# Ctrl+Z: fg (like fancy-ctrl-z in oh-my-zsh)
+bind '"\C-z": "fg\n"' 2>/dev/null
+
+# ── SHARED CONFIG ─────────────────────────────────────────────────────────────
+source ~/.config/shell/common.sh
+
+alias bashrc='vim ~/.bashrc && source ~/.bashrc'

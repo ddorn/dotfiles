@@ -1,40 +1,14 @@
 #!/bin/zsh
 
-# ── PATH ─────────────────────────────────────────────────────────────────────
-add_to_path() {
-    if [[ -d "$1" ]] && [[ ! "$PATH" == *"$1"* ]]; then
-        PATH="${PATH:+${PATH}:}$1"
-    fi
-}
-add_to_path "$HOME/bin"
-add_to_path "$HOME/.local/bin"
-add_to_path "$HOME/prog/scripts/scripts"
-add_to_path "$HOME/.cargo/bin"
-add_to_path "$HOME/.npm-global/bin"
-export PATH
-
-# ── ENVIRONMENT ──────────────────────────────────────────────────────────────
-export HOST=$(cat /etc/hostname)
-
-export RESTIC_REPOSITORY="sftp:zh2012@zh2012.rsync.net:backups"
-
+# ── HISTORY ──────────────────────────────────────────────────────────────────
 HISTSIZE=999999999
 SAVEHIST=$HISTSIZE
-
-export PNPM_HOME="$HOME/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-
-export EPHEMERAL_DST="$HOME/.cache/ephemeral-cache"
-export FZF_DEFAULT_OPTS='--layout=reverse --border'
-bgnotify_threshold=60
 
 # ── OH-MY-ZSH ────────────────────────────────────────────────────────────────
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="robbyrussell"
 COMPLETION_WAITING_DOTS="true"
+bgnotify_threshold=60
 
 plugins=(
     git
@@ -75,58 +49,6 @@ typeset -ag precmd_functions
 typeset -ag chpwd_functions
 (( ! ${chpwd_functions[(I)_direnv_hook]} )) && chpwd_functions=(_direnv_hook $chpwd_functions)
 
-# ── EDITOR ───────────────────────────────────────────────────────────────────
-if command -v nvim > /dev/null; then
-    export EDITOR=nvim
-    alias vi=nvim vim=nvim
-else
-    export EDITOR=vim
-fi
-
-# ── FUNCTIONS ────────────────────────────────────────────────────────────────
-unalias md 2>/dev/null
-md() { mkdir -p "$1" && cd "$1" }
-
-compress-mp4() { ffmpeg -i "$1" -vcodec libx265 -crf 28 "compressed-$1" }
-
-{{- if hasSuffix "laptop" .role }}
-# Mirror the focused output to another monitor via wl-mirror
-mirror() {
-    local focused other
-    focused=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
-    other=$(swaymsg -t get_outputs | jq -r --arg f "$focused" '.[] | select(.name != $f) | .name' | head -n 1)
-    if [[ -z "$other" ]]; then echo "No other output found"; return 1; fi
-    wl-mirror "$focused" &!
-    sleep 0.5
-    swaymsg "[app_id=\"wl_mirror\"]" move output "$other"
-    swaymsg "[app_id=\"wl_mirror\"]" fullscreen
-}
-{{- end }}
-
-# ── ALIASES ──────────────────────────────────────────────────────────────────
-alias day='date +%Y-%m-%d'
-alias rm='rm -I'
-alias mv='mv -i'
-alias r=ranger
-alias '$'='true &&'
-alias '#'=sudo
-alias py=ptpython
-alias tree='tree --gitignore'
-alias grep='grep --color=auto --exclude-dir={.bzr,CVS,.git,.hg,.svn,.idea,.tox,.venv}'
-alias zshrc='vim ~/.zshrc && source ~/.zshrc'
-alias ephemeral='~/prog/all/ephemeral/ephemeral | grep -v "already a symlink"'
-alias receipe="python -c \"import random as r; print('Receipe p.' + str(r.choice(list(range(15, 150)) + list(range(172, 204)))))\""
-{{- if eq .chezmoi.hostname "hyperion" }}
-alias backuplist='du -X ~/restic_exclude ~ /etc/nginx -h -t 1M | sort -h'
-{{- else }}
-alias backuplist='du -X ~/.config/restic/exclude ~ -h -t 1M | sort -h'
-{{- end }}
-{{- if hasSuffix "laptop" .role }}
-alias scale='swaymsg output "*" scale'
-alias qwerty="swaymsg input '*' xkb_layout fr"
-alias azerty="swaymsg input '*' xkb_layout us"
-{{- end }}
-
 # ── COMPLETION ───────────────────────────────────────────────────────────────
 autoload -Uz compinit
 zstyle ':completion:*' menu select
@@ -134,30 +56,7 @@ fpath+=~/.zfunc
 compinit
 unset -f d  # conflicts with the personal 'all' navigation script
 
-# ── STARTUP ──────────────────────────────────────────────────────────────────
-{{- if hasSuffix "laptop" .role }}
-# Launch sway automatically on tty1 login
-if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
-    export SDL_VIDEODRIVER=wayland
-    export _JAVA_AWT_WM_NONREPARENTING=1
-    export QT_QPA_PLATFORM=wayland
-    export XDG_CURRENT_DESKTOP=sway
-    export XDG_SESSION_DESKTOP=sway
-    export MOZ_ENABLE_WAYLAND=1
-    export QT_SCREEN_SCALE_FACTORS="0.66666;1"
-    export ELECTRON_OZONE_PLATFORM_HINT=wayland
-    exec sway
-fi
-{{- end }}
+# ── SHARED CONFIG ─────────────────────────────────────────────────────────────
+source ~/.config/shell/common.sh
 
-# Run backup if not snoozed and not inside a Cursor agent
-_backup_snooze=~/.cache/backups/dont_ask_for_backup_until
-if [[ -f $_backup_snooze ]] && (( $(date -d $(cat $_backup_snooze) +%s) > $(date +%s) )); then
-    :
-elif [[ "$CURSOR_AGENT" != "1" ]]; then
-    ~/.config/restic/backup.py backup --if-needed
-fi
-
-# Warn if /home is low on disk space
-_free_space=$(df -m "$HOME" | awk 'NR==2 {print $4}')
-(( _free_space < 500 )) && notify-send "Low disk space" "Only ${_free_space}Mb left on $HOME"
+alias zshrc='vim ~/.zshrc && source ~/.zshrc'
