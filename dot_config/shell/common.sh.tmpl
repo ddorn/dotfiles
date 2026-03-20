@@ -95,7 +95,7 @@ _backup_snooze=~/.cache/backups/dont_ask_for_backup_until
 if [[ -f $_backup_snooze ]] && (( $(date -d "$(cat $_backup_snooze)" +%s) > $(date +%s) )); then
     :
 elif [[ "$CURSOR_AGENT" != "1" ]]; then
-    ~/.config/restic/backup.py backup --if-needed
+    ~/.local/bin/backup.py backup --if-needed
 fi
 
 # Warn if /home is low on disk space

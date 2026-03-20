@@ -2,6 +2,9 @@
 # Non-interactive shell: bail out early
 [[ $- != *i* ]] && return
 
+# ── SHARED CONFIG ─────────────────────────────────────────────────────────────
+source ~/.config/shell/common.sh
+
 # ── HISTORY ──────────────────────────────────────────────────────────────────
 HISTSIZE=999999999
 HISTFILESIZE=999999999
@@ -51,8 +54,5 @@ fi
 
 # Ctrl+Z: fg (like fancy-ctrl-z in oh-my-zsh)
 bind '"\C-z": "fg\n"' 2>/dev/null
-
-# ── SHARED CONFIG ─────────────────────────────────────────────────────────────
-source ~/.config/shell/common.sh
 
 alias bashrc='vim ~/.bashrc && source ~/.bashrc'

@@ -1,5 +1,8 @@
 #!/bin/zsh
 
+# ── SHARED CONFIG ─────────────────────────────────────────────────────────────
+source ~/.config/shell/common.sh
+
 # ── HISTORY ──────────────────────────────────────────────────────────────────
 HISTSIZE=999999999
 SAVEHIST=$HISTSIZE
@@ -55,8 +58,5 @@ zstyle ':completion:*' menu select
 fpath+=~/.zfunc
 compinit
 unset -f d  # conflicts with the personal 'all' navigation script
-
-# ── SHARED CONFIG ─────────────────────────────────────────────────────────────
-source ~/.config/shell/common.sh
 
 alias zshrc='vim ~/.zshrc && source ~/.zshrc'
