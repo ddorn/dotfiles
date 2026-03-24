@@ -33,28 +33,28 @@ prompt_install() {
     info "Install command:"
     echo "$display" | sed 's/^/    /'
     echo
-    echo "  [s] Install via script"
-    echo "  [m] Skip (install manually later)"
+    echo "  [y] Install via script"
+    echo "  [n] Skip (install manually later)"
     echo
     printf "Choice [s/m]: "
     read -r choice
 
     case "${choice,,}" in
-        s)
+        y)
             info "Running install..."
             eval "$cmd"
             success "$name installed"
             ;;
-        m|*)
+        n|*)
             skip "Skipping $name — install manually when ready"
             ;;
     esac
 }
 
 echo
-echo -e "${_bold}╔══════════════════════════════════════╗${_reset}"
+echo -e "${_bold}╔═══════════════════════════════════════╗${_reset}"
 echo -e "${_bold}║  Machine setup — interactive install  ║${_reset}"
-echo -e "${_bold}╚══════════════════════════════════════╝${_reset}"
+echo -e "${_bold}╚═══════════════════════════════════════╝${_reset}"
 echo "All tools are installed to ~/.local/bin (no sudo required)."
 echo "Oh-My-Zsh and ZSH plugins are managed by chezmoi externals (.chezmoiexternal.toml)."
 
