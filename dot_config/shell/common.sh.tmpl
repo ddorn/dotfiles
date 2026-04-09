@@ -90,6 +90,7 @@ if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
 fi
 {{- end }}
 
+{{- if ne .role "work-laptop" }}
 # Run backup if not snoozed and not inside a Cursor agent
 _backup_snooze=~/.cache/backups/dont_ask_for_backup_until
 if [[ -f $_backup_snooze ]] && (( $(date -d "$(cat $_backup_snooze)" +%s) > $(date +%s) )); then
@@ -97,6 +98,7 @@ if [[ -f $_backup_snooze ]] && (( $(date -d "$(cat $_backup_snooze)" +%s) > $(da
 elif [[ "$CURSOR_AGENT" != "1" ]]; then
     ~/.local/bin/backup.py backup --if-needed
 fi
+{{- end }}
 
 # Warn if /home is low on disk space
 _free_space=$(df -m "$HOME" | awk 'NR==2 {print $4}')

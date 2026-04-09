@@ -362,6 +362,9 @@ exec gammastep
 # Display layout: big monitor (DP-2) on the left, small (DP-1) on the right
 output DP-2 pos 0 0
 output DP-1 pos 2560 0
+
+# Lock screen at 17:30 with orange background
+exec sh -c 'while true; do now=$(date +%s); target=$(date -d "today 17:30" +%s); [ "$now" -ge "$target" ] && target=$(date -d "tomorrow 17:30" +%s); sleep $((target - now)); swaylock -f -c FFA500; done'
 {{ end -}}
 
 include /etc/sway/config.d/*
