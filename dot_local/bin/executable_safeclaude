@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# safeclaude — run Claude Code (or any command) inside a bubblewrap sandbox
+# scoped to the current working directory.
+#
+# What's visible inside the sandbox:
+#   /usr /etc /opt /var /sys      read-only  — system software, certs, resolv.conf
+#   $PWD (the project you cd'd to) read-write — your project files
+#   ~/.local/bin                  read-only  — user-installed CLIs (claude, etc.)
+#   ~/.local/share/claude         read-only  — Claude Code runtime
+#   ~/.cache/uv                   read-write — uv package cache (shared across projects)
+#   ~/.claude  +  ~/.claude.json  read-write — Claude config / sessions / OAuth token
+#
+# What's INVISIBLE: everything else under $HOME — ~/.ssh, other project
+# directories, browser profiles, ~/.aws, ~/.gnupg, dotfiles, etc.
+#
+# Usage:
+#   cd ~/prog/some-project
+#   safeclaude                   # launches `claude` in the sandbox
+#   safeclaude bash              # interactive shell instead
+#   safeclaude uv run pytest     # one-shot command
+#
+# ─── HOW TO EXTEND ──────────────────────────────────────────────────────────
+# • Expose another tool's cache/config:        add a `maybe_bind` line below.
+#     - read-only:  maybe_ro_bind "$H/.config/gh"
+#     - read-write: maybe_bind    "$H/.cache/pip"
+# • Expose a sibling project (read-only ref):  maybe_ro_bind "$H/prog/lib-x"
+# • Cut network access (offline mode):         add `--unshare-net \` to the bwrap call.
+# • Block writes to uv cache / ~/.claude:      change `maybe_bind` → `maybe_ro_bind`.
+# • Pass an env var through from outside:      add `--setenv NAME "$NAME" \`.
+# • Persist work to a scratch dir outside cwd: add `--bind ~/scratch ~/scratch \`.
+# • Per-project override: drop a `.safeclaude` file at the repo root with extra
+#   bwrap flags, one per line — sourced near the bottom of this script.
+# ────────────────────────────────────────────────────────────────────────────
+
+set -euo pipefail
+
+if ! command -v bwrap >/dev/null; then
+  echo "safeclaude: bwrap not found — install bubblewrap" >&2
+  exit 1
+fi
+
+PROJECT="$PWD"
+H="${HOME}"
+
+# Refuse to run if cwd is $HOME itself or somewhere that would expose too much.
+case "$PROJECT" in
+  "$H"|"$H/"|/|"")
+    echo "safeclaude: refusing to sandbox \$HOME or / — cd into a project first." >&2
+    exit 1
+    ;;
+esac
+
+binds=(
+  # System software & config (read-only).
+  --ro-bind /usr /usr
+  --ro-bind /etc /etc
+  --ro-bind /opt /opt
+  --ro-bind /var /var
+  --ro-bind /sys /sys
+  --symlink usr/bin /bin
+  --symlink usr/bin /sbin
+  --symlink usr/lib /lib
+  --symlink usr/lib /lib64
+
+  # Kernel-provided pseudo-filesystems.
+  --proc /proc
+  --dev /dev
+  --tmpfs /tmp
+  --tmpfs /run
+
+  # Empty home, then graft only what we want into it.
+  --tmpfs "$H"
+
+  # The project itself: read-write.
+  --bind "$PROJECT" "$PROJECT"
+)
+
+# Helpers — only mount if the source exists, so missing tools don't break the script.
+maybe_ro_bind() { [[ -e "$1" ]] && binds+=(--ro-bind "$1" "$1"); }
+maybe_bind()    { [[ -e "$1" ]] && binds+=(--bind    "$1" "$1"); }
+
+# ─── ADD/REMOVE EXPOSED PATHS HERE ──────────────────────────────────────────
+maybe_ro_bind "$H/.local/bin"
+maybe_ro_bind "$H/.local/share/claude"
+maybe_bind    "$H/.cache/uv"
+maybe_bind    "$H/.claude"
+maybe_bind    "$H/.claude.json"
+# ────────────────────────────────────────────────────────────────────────────
+
+# Per-project extension: a `.safeclaude` file at the repo root can append
+# extra bwrap flags (one token per line, '#'-comments allowed). Example:
+#     --ro-bind
+#     /home/diego/prog/shared-lib
+#     /home/diego/prog/shared-lib
+extra=()
+if [[ -f "$PROJECT/.safeclaude" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    extra+=("$line")
+  done < "$PROJECT/.safeclaude"
+fi
+
+# Default command: run claude. Override by passing args (e.g. `safeclaude bash`).
+if [[ $# -eq 0 ]]; then
+  set -- claude
+fi
+
+exec bwrap \
+  "${binds[@]}" \
+  "${extra[@]}" \
+  --setenv HOME "$H" \
+  --setenv PATH "$H/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+  --setenv TERM "${TERM:-xterm-256color}" \
+  --setenv PS1 '(safeclaude) \w \$ ' \
+  --chdir "$PROJECT" \
+  --unshare-user \
+  --unshare-ipc \
+  --unshare-pid \
+  --unshare-uts \
+  --die-with-parent \
+  "$@"
