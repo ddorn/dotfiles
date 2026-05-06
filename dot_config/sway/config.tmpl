@@ -330,7 +330,8 @@ bindsym $mod+shift+Print exec obs-cli recording toggle
 bindsym $mod+Shift+a exec anki
 
 # Apps
-exec logseq --enable-features=UseOzonePlatform --ozone-platform=wayland
+# exec logseq --enable-features=UseOzonePlatform --ozone-platform=wayland
+exec obsidian
 exec amazingmarvin --no-sandbox --enable-features=UseOzonePlatform --enable-features=WaylandWindowDecorations --ozone-platform-hint=auto
 exec beeper --enable-features=UseOzonePlatform --enable-features=WaylandWindowDecorations --ozone-platform-hint=auto
 assign [title="Beeper"] workspace $chat_workspace
@@ -362,6 +363,9 @@ exec gammastep
 # Display layout: big monitor (DP-2) on the left, small (DP-1) on the right
 output DP-2 pos 0 0
 output DP-1 pos 2560 0
+
+exec flatpak run org.obsidian.Obsidian
+exec firefox-esr
 
 # Lock screen at 17:30 with orange background
 exec sh -c 'while true; do now=$(date +%s); target=$(date -d "today 17:30" +%s); [ "$now" -ge "$target" ] && target=$(date -d "tomorrow 17:30" +%s); sleep $((target - now)); swaylock -f -c FFA500; done'
