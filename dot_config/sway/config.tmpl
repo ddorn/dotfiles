@@ -369,6 +369,9 @@ exec firefox-esr
 
 # Lock screen at 17:30 with orange background
 exec sh -c 'while true; do now=$(date +%s); target=$(date -d "today 17:30" +%s); [ "$now" -ge "$target" ] && target=$(date -d "tomorrow 17:30" +%s); sleep $((target - now)); swaylock -f -c FFA500; done'
+
+# Meditation prompt: lock with green every ~4h on average (1/48 chance every 5 min)
+exec sh -c 'while true; do sleep 300; awk "BEGIN{srand(); exit (rand() < 1/48) ? 0 : 1}" && swaylock -f -c 00AA00; done'
 {{ end -}}
 
 include /etc/sway/config.d/*
