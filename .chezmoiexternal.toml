@@ -1,33 +1,40 @@
 # chezmoi manages these directories by downloading and extracting archives.
 # Run `chezmoi apply` to install/update, or `chezmoi -R apply` to force refresh.
+#
+# All GitHub sources are pinned to content that is at least 2 weeks old to
+# reduce supply chain risk. See .chezmoiscripts/gh-old-commit.py and
+# .chezmoiscripts/gh-delayed-release.py for the pinning logic.
+
+{{ $old_commit     := joinPath .chezmoi.sourceDir ".chezmoiscripts" "gh-old-commit.py" -}}
+{{ $delayed_release := joinPath .chezmoi.sourceDir ".chezmoiscripts" "gh-delayed-release.py" -}}
+{{ $omz     := output $old_commit "ohmyzsh/ohmyzsh" | trim -}}
+{{ $zsh_hl  := output $old_commit "zsh-users/zsh-syntax-highlighting" | trim -}}
+{{ $zsh_as  := output $old_commit "zsh-users/zsh-autosuggestions" | trim -}}
+{{ $zsh_hss := output $old_commit "zsh-users/zsh-history-substring-search" | trim -}}
 
 [".oh-my-zsh"]
     type = "archive"
-    url = "https://github.com/ohmyzsh/ohmyzsh/archive/master.tar.gz"
+    url = "https://github.com/ohmyzsh/ohmyzsh/archive/{{ $omz }}.tar.gz"
     exact = true
     stripComponents = 1
-    refreshPeriod = "168h"
 
 [".oh-my-zsh/custom/plugins/zsh-syntax-highlighting"]
     type = "archive"
-    url = "https://github.com/zsh-users/zsh-syntax-highlighting/archive/master.tar.gz"
+    url = "https://github.com/zsh-users/zsh-syntax-highlighting/archive/{{ $zsh_hl }}.tar.gz"
     exact = true
     stripComponents = 1
-    refreshPeriod = "168h"
 
 [".oh-my-zsh/custom/plugins/zsh-autosuggestions"]
     type = "archive"
-    url = "https://github.com/zsh-users/zsh-autosuggestions/archive/master.tar.gz"
+    url = "https://github.com/zsh-users/zsh-autosuggestions/archive/{{ $zsh_as }}.tar.gz"
     exact = true
     stripComponents = 1
-    refreshPeriod = "168h"
 
 [".oh-my-zsh/custom/plugins/zsh-history-substring-search"]
     type = "archive"
-    url = "https://github.com/zsh-users/zsh-history-substring-search/archive/master.tar.gz"
+    url = "https://github.com/zsh-users/zsh-history-substring-search/archive/{{ $zsh_hss }}.tar.gz"
     exact = true
     stripComponents = 1
-    refreshPeriod = "168h"
 
 [".local/bin/bw"]
     type = "archive-file"
@@ -37,11 +44,14 @@
 
 {{- if eq .role "work-laptop" }}
 
+{{ $sway := output $old_commit "Biont/sway-launcher-desktop" | trim -}}
+{{ $bat  := output $delayed_release "sharkdp/bat" | trim -}}
+{{ $btop := output $delayed_release "aristocratos/btop" | trim -}}
+
 [".local/bin/sway-launcher-desktop.sh"]
     type = "file"
-    url = "https://raw.githubusercontent.com/Biont/sway-launcher-desktop/master/sway-launcher-desktop.sh"
+    url = "https://raw.githubusercontent.com/Biont/sway-launcher-desktop/{{ $sway }}/sway-launcher-desktop.sh"
     executable = true
-    refreshPeriod = "720h"
 
 [".local/share/ranger"]
     type = "archive"
@@ -50,22 +60,16 @@
     stripComponents = 1
     refreshPeriod = "720h"
 
-{{- $bat := gitHubLatestRelease "sharkdp/bat" }}
-
 [".local/bin/bat"]
     type = "archive-file"
-    url = "https://github.com/sharkdp/bat/releases/download/{{ $bat.TagName }}/bat-{{ $bat.TagName }}-x86_64-unknown-linux-musl.tar.gz"
-    path = "bat-{{ $bat.TagName }}-x86_64-unknown-linux-musl/bat"
+    url = "https://github.com/sharkdp/bat/releases/download/{{ $bat }}/bat-{{ $bat }}-x86_64-unknown-linux-musl.tar.gz"
+    path = "bat-{{ $bat }}-x86_64-unknown-linux-musl/bat"
     executable = true
-    refreshPeriod = "720h"
-
-{{- $btop := gitHubLatestRelease "aristocratos/btop" }}
 
 [".local/bin/btop"]
     type = "archive-file"
-    url = "https://github.com/aristocratos/btop/releases/download/{{ $btop.TagName }}/btop-x86_64-unknown-linux-musl.tbz"
+    url = "https://github.com/aristocratos/btop/releases/download/{{ $btop }}/btop-x86_64-unknown-linux-musl.tbz"
     path = "btop/bin/btop"
     executable = true
-    refreshPeriod = "720h"
 
 {{- end }}
