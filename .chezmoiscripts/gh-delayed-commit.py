@@ -5,7 +5,7 @@ last Tuesday which was at least MIN_DAYS ago (default 14).
 That anchor date shifts by exactly one week every Tuesday, so the resolved
 SHA is stable for a full week and updates automatically without manual bumps.
 
-Usage: gh-old-commit.py owner/repo [--days N] [--branch BRANCH]
+Usage: gh-delayed-commit.py owner/repo [--days N] [--branch BRANCH]
 
 Caches results under ~/.cache/chezmoi-scripts/ keyed by repo + cutoff date,
 so repeated `chezmoi apply` runs within the same week make zero API calls.
@@ -66,7 +66,7 @@ def main() -> None:
     cache_dir = os.path.expanduser("~/.cache/chezmoi-scripts")
     cache_file = os.path.join(
         cache_dir,
-        f"old-commit-{repo.replace('/', '-')}-{branch}-{args.days}d-{cutoff.isoformat()}.txt",
+        f"delayed-commit-{repo.replace('/', '-')}-{branch}-{args.days}d-{cutoff.isoformat()}.txt",
     )
 
     sha = cached(cache_file)
