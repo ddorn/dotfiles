@@ -2,11 +2,11 @@
 # Run `chezmoi apply` to install/update, or `chezmoi -R apply` to force refresh.
 #
 # All GitHub sources are pinned to content that is at least 2 weeks old to
-# reduce supply chain risk. See .chezmoiscripts/gh-delayed-commit.py and
-# .chezmoiscripts/gh-delayed-release.py for the pinning logic.
+# reduce supply chain risk. See scripts/gh-delayed-commit.py and
+# scripts/gh-delayed-release.py for the pinning logic.
 
-{{ $old_commit     := joinPath .chezmoi.sourceDir ".chezmoiscripts" "gh-delayed-commit.py" -}}
-{{ $delayed_release := joinPath .chezmoi.sourceDir ".chezmoiscripts" "gh-delayed-release.py" -}}
+{{ $old_commit     := joinPath .chezmoi.sourceDir "scripts" "gh-delayed-commit.py" -}}
+{{ $delayed_release := joinPath .chezmoi.sourceDir "scripts" "gh-delayed-release.py" -}}
 {{ $omz     := output $old_commit "ohmyzsh/ohmyzsh" | trim -}}
 {{ $zsh_hl  := output $old_commit "zsh-users/zsh-syntax-highlighting" | trim -}}
 {{ $zsh_as  := output $old_commit "zsh-users/zsh-autosuggestions" | trim -}}
