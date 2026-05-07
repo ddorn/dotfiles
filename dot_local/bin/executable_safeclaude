@@ -9,6 +9,7 @@
 #   ~/.local/share/claude         read-only  — Claude Code runtime
 #   ~/.cache/uv                   read-write — uv package cache (shared across projects)
 #   ~/.claude  +  ~/.claude.json  read-write — Claude config / sessions / OAuth token
+#   ~/.gitconfig + ~/.config/git  read-only  — git author identity for commits
 #
 # What's INVISIBLE: everything else under $HOME — ~/.ssh, other project
 # directories, browser profiles, ~/.aws, ~/.gnupg, dotfiles, etc.
@@ -85,6 +86,8 @@ maybe_ro_bind "$H/.local/share/claude"
 maybe_bind    "$H/.cache/uv"
 maybe_bind    "$H/.claude"
 maybe_bind    "$H/.claude.json"
+maybe_ro_bind "$H/.gitconfig"
+maybe_ro_bind "$H/.config/git"
 # ────────────────────────────────────────────────────────────────────────────
 
 # Per-project extension: a `.safeclaude` file at the repo root can append
