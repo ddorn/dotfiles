@@ -40,7 +40,7 @@ if ! command -v bwrap >/dev/null; then
   exit 1
 fi
 
-PROJECT="$PWD"
+PROJECT="$(realpath $PWD)"
 H="${HOME}"
 
 # Refuse to run if cwd is $HOME itself or somewhere that would expose too much.
@@ -88,6 +88,7 @@ maybe_bind    "$H/.claude"
 maybe_bind    "$H/.claude.json"
 maybe_ro_bind "$H/.gitconfig"
 maybe_ro_bind "$H/.config/git"
+maybe_ro_bind "$H/.local/share/uv/python"
 # ────────────────────────────────────────────────────────────────────────────
 
 # Per-project extension: a `.safeclaude` file at the repo root can append
@@ -111,8 +112,6 @@ fi
 exec bwrap \
   "${binds[@]}" \
   "${extra[@]}" \
-  --setenv HOME "$H" \
-  --setenv PATH "$H/.local/bin:/usr/local/bin:/usr/bin:/bin" \
   --setenv TERM "${TERM:-xterm-256color}" \
   --setenv PS1 '(safeclaude) \w \$ ' \
   --chdir "$PROJECT" \
