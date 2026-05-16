@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# safeclaude — run Claude Code (or any command) inside a bubblewrap sandbox
+# box — run Claude Code (or any command) inside a bubblewrap sandbox
 # scoped to the current working directory.
 #
 # What's visible inside the sandbox:
@@ -16,9 +16,9 @@
 #
 # Usage:
 #   cd ~/prog/some-project
-#   safeclaude                   # launches `claude` in the sandbox
-#   safeclaude bash              # interactive shell instead
-#   safeclaude uv run pytest     # one-shot command
+#   box                   # launches `claude` in the sandbox
+#   box bash              # interactive shell instead
+#   box uv run pytest     # one-shot command
 #
 # ─── HOW TO EXTEND ──────────────────────────────────────────────────────────
 # • Expose another tool's cache/config:        add a `maybe_bind` line below.
@@ -29,14 +29,14 @@
 # • Block writes to uv cache / ~/.claude:      change `maybe_bind` → `maybe_ro_bind`.
 # • Pass an env var through from outside:      add `--setenv NAME "$NAME" \`.
 # • Persist work to a scratch dir outside cwd: add `--bind ~/scratch ~/scratch \`.
-# • Per-project override: drop a `.safeclaude` file at the repo root with extra
+# • Per-project override: drop a `.box` file at the repo root with extra
 #   bwrap flags, one per line — sourced near the bottom of this script.
 # ────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
 if ! command -v bwrap >/dev/null; then
-  echo "safeclaude: bwrap not found — install bubblewrap" >&2
+  echo "box: bwrap not found — install bubblewrap" >&2
   exit 1
 fi
 
@@ -46,7 +46,7 @@ H="${HOME}"
 # Refuse to run if cwd is $HOME itself or somewhere that would expose too much.
 case "$PROJECT" in
   "$H"|"$H/"|/|"")
-    echo "safeclaude: refusing to sandbox \$HOME or / — cd into a project first." >&2
+    echo "box: refusing to sandbox \$HOME or / — cd into a project first." >&2
     exit 1
     ;;
 esac
@@ -97,20 +97,20 @@ fi
 
 # ────────────────────────────────────────────────────────────────────────────
 
-# Per-project extension: a `.safeclaude` file at the repo root can append
+# Per-project extension: a `.box` file at the repo root can append
 # extra bwrap flags (one token per line, '#'-comments allowed). Example:
 #     --ro-bind
 #     /home/diego/prog/shared-lib
 #     /home/diego/prog/shared-lib
 extra=()
-if [[ -f "$PROJECT/.safeclaude" ]]; then
+if [[ -f "$PROJECT/.box" ]]; then
   while IFS= read -r line; do
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
     extra+=("$line")
-  done < "$PROJECT/.safeclaude"
+  done < "$PROJECT/.box"
 fi
 
-# Default command: run claude. Override by passing args (e.g. `safeclaude bash`).
+# Default command: run claude. Override by passing args (e.g. `box bash`).
 if [[ $# -eq 0 ]]; then
   set -- claude
 fi
@@ -119,7 +119,7 @@ exec bwrap \
   "${binds[@]}" \
   "${extra[@]}" \
   --setenv TERM "${TERM:-xterm-256color}" \
-  --setenv PS1 '(safeclaude) \w \$ ' \
+  --setenv PS1 '(box) \w \$ ' \
   --chdir "$PROJECT" \
   --unshare-user \
   --unshare-ipc \

@@ -5,5 +5,6 @@
 .stignore
 .venv
 venv
+.box
 
 **/.claude/settings.local.json
