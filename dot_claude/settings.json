@@ -41,6 +41,10 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /home/diego/.claude/statusline.sh"
+  },
   "enabledPlugins": {
     "claude-code-wakatime@wakatime": true,
     "frontend-design@claude-plugins-official": true
@@ -48,9 +52,5 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
   "editorMode": "vim",
-  "voiceEnabled": true,
-  "statusLine": {
-    "type": "command",
-    "command": "bash /home/diego/.claude/statusline.sh"
-  }
+  "voiceEnabled": true
 }
