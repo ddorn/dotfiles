@@ -77,20 +77,27 @@ binds=(
 )
 
 # Helpers — only mount if the source exists, so missing tools don't break the script.
-maybe_ro_bind() { [[ -e "$1" ]] && binds+=(--ro-bind "$1" "$1"); }
-maybe_bind()    { [[ -e "$1" ]] && binds+=(--bind    "$1" "$1"); }
+maybe_ro_bind() { if [[ -e "$1" ]]; then binds+=(--ro-bind "$1" "$1"); else echo "box: skipping missing path: $1" >&2; fi; }
+maybe_bind()    { if [[ -e "$1" ]]; then binds+=(--bind    "$1" "$1"); else echo "box: skipping missing path: $1" >&2; fi; }
 
 # ─── ADD/REMOVE EXPOSED PATHS HERE ──────────────────────────────────────────
 maybe_ro_bind "$H/.local/bin"
 maybe_ro_bind "$H/.local/share/claude"
-maybe_bind    "$H/.cache/uv"
-maybe_bind    "$H/.cache/pre-commit/"
 maybe_bind    "$H/.claude"
 maybe_bind    "$H/.claude.json"
+maybe_ro_bind "$H/.streamlit"
+maybe_bind    "$H/.cache/uv"
+maybe_bind    "$H/.cache/pre-commit/"
+maybe_bind    "$H/.cache/mesa_shader_cache"
+maybe_bind    "$H/.config/Code"
+maybe_bind    "$H/.vscode-oss"
+maybe_bind    "$H/.cursor"
 maybe_ro_bind "$H/.gitconfig"
 maybe_ro_bind "$H/.config/git"
 maybe_ro_bind "$H/.local/share/uv/python"
 maybe_ro_bind "$H/.local/share/pnpm"
+
+
 if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     maybe_bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
 fi
