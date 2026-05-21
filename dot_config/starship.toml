@@ -1,4 +1,4 @@
-format = """$all$fill$cmd_duration$time\
+format = """${env_var.BOX_PROJECT}$all$fill$cmd_duration$time\
 $line_break\
 $jobs\
 $battery\
@@ -7,6 +7,11 @@ $os\
 $container\
 $shell\
 $character"""
+
+[env_var.BOX_PROJECT]
+variable = "BOX_PROJECT"
+format = "[\\(box-$env_value\\)]($style) "
+style = "bold yellow"
 
 [time]
 disabled = false

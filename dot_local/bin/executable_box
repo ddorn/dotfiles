@@ -101,6 +101,16 @@ maybe_ro_bind "$H/.config/uv"
 maybe_ro_bind "$H/.local/share/uv/python"
 maybe_ro_bind "$H/.local/share/pnpm"
 
+# Interactive zsh config (read-only — config, not data). Lets `box zsh`
+# reuse your oh-my-zsh / starship / aliases setup. History stays ephemeral
+# (written to the tmpfs $HOME and discarded on exit) on purpose.
+maybe_ro_bind "$H/.zshrc"
+maybe_ro_bind "$H/.zshenv"
+maybe_ro_bind "$H/.config/shell"
+maybe_ro_bind "$H/.config/starship.toml"
+maybe_ro_bind "$H/.oh-my-zsh"
+maybe_ro_bind "$H/.zfunc"
+
 
 if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     maybe_bind "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
@@ -131,6 +141,10 @@ exec bwrap \
   "${extra[@]}" \
   --setenv TERM "${TERM:-xterm-256color}" \
   --setenv PS1 '(box) \w \$ ' \
+  --setenv SKIP_DD_BACKUP 1 \
+  `# ^ makes ~/.config/shell/common.sh skip its auto-backup on shell startup` \
+  --setenv BOX_PROJECT "$(basename "$PROJECT")" \
+  `# ^ marker the prompt reads to show "(box-<project>)"` \
   --chdir "$PROJECT" \
   --unshare-user \
   --unshare-ipc \
