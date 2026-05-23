@@ -52,6 +52,19 @@ typeset -ag precmd_functions
 typeset -ag chpwd_functions
 (( ! ${chpwd_functions[(I)_direnv_hook]} )) && chpwd_functions=(_direnv_hook $chpwd_functions)
 
+# Auto-enter the `box` sandbox when cd-ing into a directory that holds a .box
+# file (opt-in marker — also box's per-project flags file). Runs box as a
+# subprocess (NOT exec), so quitting the box (Ctrl-D) returns you to this
+# shell, same dir, unboxed. Appended after _direnv_hook so direnv has already
+# exported any .envrc vars into the env that box then inherits.
+_box_autoenter() {
+    [[ -o interactive ]] || return                          # skip scripts
+    [[ -n "${BOX_PROJECT:-}" ]] && return                   # already inside a box
+    command -v box >/dev/null || return                     # box not installed
+    [[ -e .box ]] && box zsh
+}
+(( ! ${chpwd_functions[(I)_box_autoenter]} )) && chpwd_functions+=(_box_autoenter)
+
 # ── COMPLETION ───────────────────────────────────────────────────────────────
 autoload -Uz compinit
 zstyle ':completion:*' menu select
