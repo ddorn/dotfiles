@@ -248,8 +248,8 @@ bar {
 {{ end -}}
 
 ### Visual
-default_border pixel
-hide_edge_borders both
+default_border pixel 3
+hide_edge_borders smart
 set $bg_1 #1D2021
 set $bg_2 #282828
 set $fg #f3f3f3
@@ -257,7 +257,7 @@ set $fg_1 #EBDBB2
 set $blue #5ad4e6
 set $green #B7FFB7
 set $purple #948AE3
-set $accent $purple
+set $accent $blue
 # class                 border  bground text    indicator child_border
 client.focused          $accent $accent $fg     $accent   $accent
 client.focused_inactive $bg_2   #5F676A $fg     #484E50   #5F676A
