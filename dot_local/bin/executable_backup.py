@@ -410,8 +410,13 @@ def get_restic_password() -> str:
     """Fetch the restic password from the environment or Bitwarden."""
     if password := os.environ.get("RESTIC_PASSWORD"):
         return password
-    rprint("[yellow]Unlocking Bitwarden...")
-    session = subprocess.check_output(["bw", "unlock", "--raw"], text=True).strip()
+    while True:
+        rprint("[yellow]Unlocking Bitwarden...")
+        try:
+            session = subprocess.check_output(["bw", "unlock", "--raw"], text=True).strip()
+            break
+        except subprocess.CalledProcessError:
+            rprint("[red]Failed to unlock Bitwarden, please try again.")
     return subprocess.check_output(
         ["bw", "get", "password", "restic backups", "--session", session],
         text=True,
