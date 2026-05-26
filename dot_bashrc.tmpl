@@ -10,7 +10,7 @@ HISTSIZE=999999999
 HISTFILESIZE=999999999
 HISTCONTROL=ignoredups:erasedups
 shopt -s histappend
-# Persist history across sessions after each command (set before starship so it appends)
+# Persist history across sessions after each command
 PROMPT_COMMAND='history -a; history -c; history -r'
 
 # ── SHELL OPTIONS ─────────────────────────────────────────────────────────────
@@ -34,7 +34,6 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;32m'
 
 # ── PROMPT & SHELL TOOLS ─────────────────────────────────────────────────────
-eval "$(starship init bash)"
 
 {{- if eq .chezmoi.hostname "pando" }}
 eval "$(jump shell bash)"
