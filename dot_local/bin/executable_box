@@ -149,6 +149,14 @@ exec bwrap \
   `# ^ makes ~/.config/shell/common.sh skip its auto-backup on shell startup` \
   --setenv BOX_PROJECT "$(basename "$PROJECT")" \
   `# ^ marker the prompt reads to show "(box-<project>)"` \
+  --unsetenv SWAYSOCK \
+  `# ^ The sway IPC socket lives under /run (tmpfs is mounted over it here),` \
+  `#   so the inherited SWAYSOCK is stale: drop it, else swaymsg clients` \
+  `#   (e.g. the bgnotify zsh plugin) spam connection errors every prompt.` \
+  `#   Do NOT bind the socket to fix this. The sway IPC has an exec verb and` \
+  `#   sway runs OUTSIDE the sandbox, so swaymsg exec sh -c ... would spawn` \
+  `#   arbitrary commands on the host with your full privileges: a complete` \
+  `#   sandbox escape. Keeping it unset is the whole point.` \
   --chdir "$PROJECT" \
   --unshare-user \
   --unshare-ipc \
