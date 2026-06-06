@@ -1,0 +1,11 @@
+# Supply-chain hardening: refuse to install any package version published less
+# than this many MINUTES ago. 14400 = 10 days. Mirrors uv's exclude-newer="10d".
+# Requires pnpm >= 10.16. Lines starting with # or ; are comments (ini format).
+minimum-release-age=14400
+
+# Bypass options when you need a fresher version:
+#   - Permanent per-package exemption (supports glob patterns), repeat the line:
+#       minimum-release-age-exclude[]=@types/node
+#       minimum-release-age-exclude[]=my-scope/*
+#   - One-off override on the command line (disable entirely for one command):
+#       pnpm add some-pkg --config.minimum-release-age=0
