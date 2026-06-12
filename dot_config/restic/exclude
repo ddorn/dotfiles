@@ -20,6 +20,7 @@
 **/dist
 **/machiavelli/game_data
 **/node_modules
+**/.pnpm-store
 **/target
 **/tropha*.db
 **/venv
