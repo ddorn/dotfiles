@@ -98,7 +98,7 @@ maybe_bind    "$H/.cursor"
 maybe_ro_bind "$H/.gitconfig"
 maybe_ro_bind "$H/.config/git"
 maybe_ro_bind "$H/.config/uv"
-maybe_ro_bind "$H/.local/share/uv/python"
+maybe_ro_bind "$H/.local/share/uv"
 
 # direnv allow/deny approvals — so .envrc loaded by direnv inside the box is
 # recognized as already-allowed (read-only: approve outside the box).
@@ -114,6 +114,12 @@ maybe_ro_bind "$H/.config/shell"
 maybe_ro_bind "$H/.config/starship.toml"
 maybe_ro_bind "$H/.oh-my-zsh"
 maybe_ro_bind "$H/.zfunc"
+# Userspace zsh (no-admin machines): autoload functions like is-at-least,
+# add-zsh-hook, compinit live here, on $fpath. Missing → flood of "function
+# definition file not found" errors. System zsh keeps these under /usr (already ro-bound).
+maybe_ro_bind "$H/.local/share/zsh"
+# Userspace fzf (no-admin machines): binary + completion/keybinding scripts.
+maybe_ro_bind "$H/.fzf"
 
 
 if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
