@@ -9,6 +9,11 @@ Requirements:
     - swaylock (screen locker)
     - swayidle (idle detection)
     - notify-send (notifications, usually from libnotify)
+    - fuser (camera-usage detection, from psmisc) — optional; meeting
+      detection degrades gracefully (never exempts) if it's missing
+    - pw-dump (screen-share detection, from pipewire) — optional; same
+      graceful degradation
+    - pgrep (wl-mirror / presentation detection, from procps) — optional
 
 Installation:
     Managed by chezmoi. This script, run_focus_daemon.sh and the lock images
@@ -24,6 +29,7 @@ Logs:
     journalctl --user -u focus-helper -f
 """
 
+import json
 import subprocess
 import time
 import random
@@ -95,6 +101,70 @@ def is_shocking_images_time() -> bool:
         return SHOCKING_IMAGES_START_TIME <= current_time <= SHOCKING_IMAGES_END_TIME
 
 
+def is_camera_active() -> bool:
+    """Return True if any webcam device (/dev/video*) is currently held open.
+
+    Used to detect video meetings: while the camera is on we assume you're in a
+    call and pause the focus timer instead of locking the screen. Relies on
+    `fuser`, which exits 0 when at least one of the given devices is in use.
+    """
+    devices = sorted(Path("/dev").glob("video*"))
+    if not devices:
+        return False
+    try:
+        result = subprocess.run(
+            ["fuser", *[str(d) for d in devices]], capture_output=True, text=True
+        )
+    except FileNotFoundError:
+        print("Warning: 'fuser' not found; cannot detect camera usage.")
+        return False
+    return result.returncode == 0
+
+
+def is_screen_sharing() -> bool:
+    """Return True if a screen-share (screencast) session is currently active.
+
+    On Sway/wlroots, sharing the screen makes xdg-desktop-portal-wlr publish a
+    PipeWire node named "xdg-desktop-portal-wlr"; that node only exists while a
+    screencast is live, so its presence is a precise marker. Uses `pw-dump`;
+    degrades gracefully (returns False) if it's missing or unparseable.
+    """
+    try:
+        result = subprocess.run(["pw-dump"], capture_output=True, text=True, check=True)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        print("Warning: 'pw-dump' unavailable; cannot detect screen sharing.")
+        return False
+
+    try:
+        objects = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        print("Warning: could not parse pw-dump output; cannot detect screen sharing.")
+        return False
+
+    for obj in objects:
+        if obj.get("type") != "PipeWire:Interface:Node":
+            continue
+        props = (obj.get("info") or {}).get("props") or {}
+        if (props.get("node.name") or "").startswith("xdg-desktop-portal-wlr"):
+            return True
+    return False
+
+
+def is_mirroring() -> bool:
+    """Return True if wl-mirror is running (output mirroring for a presentation).
+
+    Matches the exact process name with `pgrep -x` so unrelated command lines
+    that merely mention "wl-mirror" don't count. Degrades gracefully if pgrep
+    is unavailable.
+    """
+    try:
+        result = subprocess.run(["pgrep", "-x", "wl-mirror"], capture_output=True, text=True)
+    except FileNotFoundError:
+        print("Warning: 'pgrep' not found; cannot detect output mirroring.")
+        return False
+    return result.returncode == 0
+
+
 def get_lock_image_path() -> Path:
     """Get the appropriate lock image based on current time."""
     if is_shocking_images_time():
@@ -159,9 +229,30 @@ def main():
 
     active_minutes = 0
     while True:
+        # While the camera is on (video meeting), the screen is being shared, or
+        # an output is mirrored for a presentation, we don't lock — you're
+        # presenting/talking, not glued to a document — so we pause the timer
+        # instead of counting the time or locking. The exemption is suspended
+        # during the shocking-images window (late-night "extreme work"), where
+        # the break gets enforced regardless.
+        exempt_reasons = []
+        if not is_shocking_images_time():
+            if is_camera_active():
+                exempt_reasons.append("camera on")
+            if is_screen_sharing():
+                exempt_reasons.append("screen sharing")
+            if is_mirroring():
+                exempt_reasons.append("presenting (wl-mirror)")
+        meeting_exempt = bool(exempt_reasons)
+
         # The swayidle daemon creates the marker file when the user is idle.
         # If the file doesn't exist, it means the user was active.
-        if not IDLE_MARKER_PATH.exists():
+        if meeting_exempt:
+            print(
+                f"Meeting exemption ({', '.join(exempt_reasons)}) — focus timer paused. "
+                f"Active time held at {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
+            )
+        elif not IDLE_MARKER_PATH.exists():
             active_minutes += CHECK_INTERVAL_SECONDS / 60
             print(
                 f"User is active. Total active time: {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
@@ -176,7 +267,7 @@ def main():
                 f"User is idle. Total active time remains {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
             )
 
-        if active_minutes >= USAGE_MINUTES_THRESHOLD:
+        if not meeting_exempt and active_minutes >= USAGE_MINUTES_THRESHOLD:
             print(f"Usage threshold of {USAGE_MINUTES_THRESHOLD} minutes reached. Locking screen.")
             keep_screen_locked_for(LOCK_DURATION_SECONDS)
             # Reset the counter after a break
