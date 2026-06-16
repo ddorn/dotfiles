@@ -1,0 +1,14 @@
+#!/bin/sh
+# Reload the systemd user manager so changed/added user units are picked up.
+# Re-runs whenever a managed user unit changes (hash of the unit dir below).
+#
+# units hash: {{ include "dot_config/systemd/user/focus-helper.service" | sha256sum }}
+
+set -e
+
+# Only meaningful where a user systemd instance is reachable (graphical session).
+if ! command -v systemctl >/dev/null 2>&1; then
+    exit 0
+fi
+
+systemctl --user daemon-reload 2>/dev/null || true

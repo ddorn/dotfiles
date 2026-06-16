@@ -1,0 +1,239 @@
+"""
+Focus Helper - Enforced Screen Breaks for Sway/Wayland
+
+Locks your screen after sustained activity, forcing you to take regular breaks.
+Unlike passive reminders, this actually locks the screen and keeps it locked
+for LOCK_DURATION_SECONDS (re-locking if you unlock early).
+
+Requirements:
+    - swaylock (screen locker)
+    - swayidle (idle detection)
+    - notify-send (notifications, usually from libnotify)
+
+Installation:
+    Managed by chezmoi. This script, run_focus_daemon.sh and the lock images
+    live under ~/.local/share/focus-helper/. The systemd user unit is at
+    dot_config/systemd/user/focus-helper.service and is started from the sway
+    config (exec systemctl --user start focus-helper.service) so it comes up
+    after Wayland is ready. `chezmoi apply` runs daemon-reload automatically.
+
+Configuration:
+    Edit the constants below (USAGE_MINUTES_THRESHOLD, LOCK_DURATION_SECONDS, etc.)
+
+Logs:
+    journalctl --user -u focus-helper -f
+"""
+
+import subprocess
+import time
+import random
+from pathlib import Path
+from datetime import datetime, time as dt_time
+
+# --- Configuration ---
+USAGE_MINUTES_THRESHOLD = 20  # Lock screen after X minutes of activity
+CHECK_INTERVAL_SECONDS = 60  # How often the script checks for activity
+# Notify at 5, 3, and 1 minute(s) before the screen locks.
+# NOTIFICATION_MINUTES_BEFORE_LOCK = {1, 3, 5}
+NOTIFICATION_MINUTES_BEFORE_LOCK = {}
+# IMPORTANT: This value is passed to the swayidle daemon.
+IDLE_TIMEOUT_SECONDS = 60  # Consider user idle no activity for X seconds
+IDLE_MARKER_PATH = Path("/tmp/focus_idle_marker")
+# The script will look for your image here.
+# You can change this to an absolute path if you prefer.
+LOCK_IMAGE_PATH = Path(__file__).parent / "data/deepbreaths.jpg"
+SHOCKING_IMAGES_DIR = Path(__file__).parent / "data/shocking-images"
+DAEMON_SCRIPT_PATH = Path(__file__).parent / "run_focus_daemon.sh"
+
+# Shocking images time range configuration
+# Between these hours, a random image from SHOCKING_IMAGES_DIR will be used
+SHOCKING_IMAGES_START_TIME = dt_time(23, 0)  # 11:00 PM
+SHOCKING_IMAGES_END_TIME = dt_time(6, 0)  # 6:00 AM
+
+# This is dangerous! If set to a high value
+# the computer will not be usable for the given amount of time.
+# Keeps the screen locked for X seconds, re-locking it if unlocked.
+# If set to 0, locks only once.
+LOCK_DURATION_SECONDS = 30  # ! Read the comment above.
+
+# Time-based override configuration
+# Set to None to disable time-based override
+OVERRIDE_START_TIME = dt_time(9, 0)  # 9:00 AM
+OVERRIDE_END_TIME = dt_time(20, 0)  # 8:00 PM (20:00)
+OVERRIDE_END_DATE = datetime(2026, 5, 14)  # Override ends on this date (inclusive)
+# ---
+
+
+def is_override_active() -> bool:
+    """Check if the time-based override is currently active."""
+    if OVERRIDE_START_TIME is None or OVERRIDE_END_TIME is None:
+        return False
+
+    now = datetime.now()
+
+    # Check if we're past the override end date
+    if now.date() > OVERRIDE_END_DATE.date():
+        return False
+
+    # Check if current time is within the override window
+    current_time = now.time()
+    return OVERRIDE_START_TIME <= current_time <= OVERRIDE_END_TIME
+
+
+def is_shocking_images_time() -> bool:
+    """Check if current time is within the shocking images time range."""
+    current_time = datetime.now().time()
+
+    # Handle time ranges that cross midnight
+    if SHOCKING_IMAGES_START_TIME > SHOCKING_IMAGES_END_TIME:
+        # Range crosses midnight (e.g., 23:00 to 06:00)
+        return (
+            current_time >= SHOCKING_IMAGES_START_TIME or current_time <= SHOCKING_IMAGES_END_TIME
+        )
+    else:
+        # Range within same day
+        return SHOCKING_IMAGES_START_TIME <= current_time <= SHOCKING_IMAGES_END_TIME
+
+
+def get_lock_image_path() -> Path:
+    """Get the appropriate lock image based on current time."""
+    if is_shocking_images_time():
+        # Use a random image from the shocking images directory
+        if SHOCKING_IMAGES_DIR.exists() and SHOCKING_IMAGES_DIR.is_dir():
+            image_files = [
+                f
+                for f in SHOCKING_IMAGES_DIR.iterdir()
+                if f.is_file() and f.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
+            ]
+            if image_files:
+                selected_image = random.choice(image_files)
+                print(f"Using shocking image: {selected_image.name}")
+                return selected_image
+            else:
+                print(f"Warning: No images found in {SHOCKING_IMAGES_DIR}. Using default image.")
+        else:
+            print(
+                f"Warning: Shocking images directory not found at {SHOCKING_IMAGES_DIR}. Using default image."
+            )
+
+    # Use default image
+    return LOCK_IMAGE_PATH
+
+
+def send_notification(message: str):
+    """Sends a desktop notification using notify-send."""
+    summary = "Focus Helper"
+    try:
+        # We use a summary to ensure notifications are grouped correctly.
+        subprocess.run(["notify-send", summary, message], check=True, capture_output=True)
+        print(f"Sent notification: {message}")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("Warning: Could not send notification. Is 'notify-send' installed?")
+
+
+def start_daemon():
+    """Starts the swayidle daemon using the shell script."""
+    print("Attempting to start the focus daemon...")
+    # This will raise an exception and stop the script if the daemon fails to start,
+    # which is the desired "fail fast" behavior.
+    # We do NOT capture output, as that would cause this call to hang
+    # waiting for the backgrounded swayidle process to exit.
+    subprocess.run(
+        [str(DAEMON_SCRIPT_PATH), str(IDLE_MARKER_PATH), str(IDLE_TIMEOUT_SECONDS)], check=True
+    )
+    print("Daemon start script executed successfully.")
+
+
+def main():
+    """Main loop to track usage and lock the screen."""
+    # Check if override is active
+    if is_override_active():
+        print("Focus helper is currently disabled due to time-based override.")
+        print(
+            f"Override active: {OVERRIDE_START_TIME} - {OVERRIDE_END_TIME} until {OVERRIDE_END_DATE.date()}"
+        )
+        return
+
+    start_daemon()
+    print("Starting focus helper script...")
+
+    active_minutes = 0
+    while True:
+        # The swayidle daemon creates the marker file when the user is idle.
+        # If the file doesn't exist, it means the user was active.
+        if not IDLE_MARKER_PATH.exists():
+            active_minutes += CHECK_INTERVAL_SECONDS / 60
+            print(
+                f"User is active. Total active time: {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
+            )
+
+            minutes_remaining = USAGE_MINUTES_THRESHOLD - active_minutes
+            if minutes_remaining in NOTIFICATION_MINUTES_BEFORE_LOCK:
+                message = f"Short break in {minutes_remaining} minute(s)."
+                send_notification(message)
+        else:
+            print(
+                f"User is idle. Total active time remains {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
+            )
+
+        if active_minutes >= USAGE_MINUTES_THRESHOLD:
+            print(f"Usage threshold of {USAGE_MINUTES_THRESHOLD} minutes reached. Locking screen.")
+            keep_screen_locked_for(LOCK_DURATION_SECONDS)
+            # Reset the counter after a break
+            active_minutes = 0
+            # Also, ensure the idle marker is gone so we don't count the break
+            # as idle time that carries over.
+            IDLE_MARKER_PATH.unlink(missing_ok=True)
+
+        time.sleep(CHECK_INTERVAL_SECONDS)
+
+
+def lock_screen():
+    command = ["swaylock"]
+    lock_image = get_lock_image_path()
+
+    if lock_image.exists():
+        command.extend(["-i", str(lock_image)])
+    else:
+        print(f"Warning: Lock image not found at {lock_image}. Locking without image.")
+
+    try:
+        subprocess.run(command, check=True, capture_output=True, text=True)
+    except FileNotFoundError:
+        raise RuntimeError("swaylock not found. Is it installed?")
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"swaylock failed: {e.stderr or e.stdout or e}")
+
+
+def keep_screen_locked_for(seconds: int):
+    """Keep the screen locked for a given number of seconds. Re-locking and resetting to 1-minute block if unlocked early."""
+    end_time = time.time() + seconds
+    while time.time() < end_time:
+        lock_start = time.time()
+        lock_screen()
+        lock_end = time.time()
+        lock_duration = lock_end - lock_start
+        remaining_time = end_time - lock_end
+
+        print(f"Screen was locked for {lock_duration:.2f} seconds.")
+
+        # If there's still time remaining, user unlocked early - reset to 1 minute block
+        if remaining_time > 0:
+            reset_duration = 60
+            end_time = time.time() + reset_duration
+            print(
+                f"Screen unlocked early! Resetting to {reset_duration} second block. Remaining time: {reset_duration} seconds."
+            )
+
+        time.sleep(1)
+
+
+if __name__ == "__main__":
+
+    try:
+        main()
+    except Exception as e:
+        error_message = f"Script crashed: {e}"
+        print(error_message)
+        send_notification(error_message)
+        raise
