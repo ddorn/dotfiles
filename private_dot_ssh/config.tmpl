@@ -33,4 +33,7 @@ Host brimmon
 
 {{ if eq .role "work-laptop" -}}
 # Work-specific hosts go here
+Host github.com
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
 {{ end -}}
