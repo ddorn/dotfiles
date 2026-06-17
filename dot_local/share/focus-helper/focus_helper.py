@@ -10,7 +10,7 @@ Requirements:
     - swayidle (idle detection)
     - notify-send (notifications, usually from libnotify)
     - fuser (camera-usage detection, from psmisc) — optional; meeting
-      detection degrades gracefully (never exempts) if it's missing
+      detection degrades gracefully (always locks) if it's missing
     - pw-dump (screen-share detection, from pipewire) — optional; same
       graceful degradation
     - pgrep (wl-mirror / presentation detection, from procps) — optional
@@ -231,28 +231,24 @@ def main():
     while True:
         # While the camera is on (video meeting), the screen is being shared, or
         # an output is mirrored for a presentation, we don't lock — you're
-        # presenting/talking, not glued to a document — so we pause the timer
-        # instead of counting the time or locking. The exemption is suspended
-        # during the shocking-images window (late-night "extreme work"), where
-        # the break gets enforced regardless.
-        exempt_reasons = []
+        # presenting/talking, not glued to a document. The timer keeps counting
+        # exactly as usual; only the action at the threshold changes: instead of
+        # locking the screen we send a notification explaining why it wasn't
+        # locked. The exemption is suspended during the shocking-images window
+        # (late-night "extreme work"), where the lock gets enforced regardless.
+        skip_lock_reasons = []
         if not is_shocking_images_time():
             if is_camera_active():
-                exempt_reasons.append("camera on")
+                skip_lock_reasons.append("camera on")
             if is_screen_sharing():
-                exempt_reasons.append("screen sharing")
+                skip_lock_reasons.append("screen sharing")
             if is_mirroring():
-                exempt_reasons.append("presenting (wl-mirror)")
-        meeting_exempt = bool(exempt_reasons)
+                skip_lock_reasons.append("presenting (wl-mirror)")
+        skip_lock = bool(skip_lock_reasons)
 
         # The swayidle daemon creates the marker file when the user is idle.
         # If the file doesn't exist, it means the user was active.
-        if meeting_exempt:
-            print(
-                f"Meeting exemption ({', '.join(exempt_reasons)}) — focus timer paused. "
-                f"Active time held at {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
-            )
-        elif not IDLE_MARKER_PATH.exists():
+        if not IDLE_MARKER_PATH.exists():
             active_minutes += CHECK_INTERVAL_SECONDS / 60
             print(
                 f"User is active. Total active time: {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
@@ -267,10 +263,20 @@ def main():
                 f"User is idle. Total active time remains {active_minutes:.2f}/{USAGE_MINUTES_THRESHOLD} minutes."
             )
 
-        if not meeting_exempt and active_minutes >= USAGE_MINUTES_THRESHOLD:
-            print(f"Usage threshold of {USAGE_MINUTES_THRESHOLD} minutes reached. Locking screen.")
-            keep_screen_locked_for(LOCK_DURATION_SECONDS)
-            # Reset the counter after a break
+        if active_minutes >= USAGE_MINUTES_THRESHOLD:
+            if skip_lock:
+                reason = ", ".join(skip_lock_reasons)
+                print(
+                    f"Usage threshold reached but not locking ({reason}). Sending notification instead."
+                )
+                send_notification(f"Time for a break — not locking ({reason}).")
+            else:
+                print(
+                    f"Usage threshold of {USAGE_MINUTES_THRESHOLD} minutes reached. Locking screen."
+                )
+                keep_screen_locked_for(LOCK_DURATION_SECONDS)
+            # Reset the counter after a break (or after notifying), so the next
+            # reminder/lock comes another full interval later.
             active_minutes = 0
             # Also, ensure the idle marker is gone so we don't count the break
             # as idle time that carries over.
