@@ -37,7 +37,7 @@ from pathlib import Path
 from datetime import datetime, time as dt_time
 
 # --- Configuration ---
-USAGE_MINUTES_THRESHOLD = 20  # Lock screen after X minutes of activity
+USAGE_MINUTES_THRESHOLD = 24  # Lock screen after X minutes of activity
 CHECK_INTERVAL_SECONDS = 60  # How often the script checks for activity
 # Notify at 5, 3, and 1 minute(s) before the screen locks.
 # NOTIFICATION_MINUTES_BEFORE_LOCK = {1, 3, 5}
