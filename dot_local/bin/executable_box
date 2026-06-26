@@ -83,6 +83,7 @@ maybe_bind()    { if [[ -e "$1" ]]; then binds+=(--bind    "$1" "$1"); else echo
 # ─── ADD/REMOVE EXPOSED PATHS HERE ──────────────────────────────────────────
 maybe_ro_bind "$H/.local/bin"
 maybe_ro_bind "$H/.local/share/claude"
+maybe_ro_bind "$H/.local/share/fonts"
 maybe_bind    "$H/.claude"
 maybe_bind    "$H/.claude.json"
 maybe_ro_bind "$H/.streamlit"
