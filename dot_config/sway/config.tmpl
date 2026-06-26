@@ -289,6 +289,15 @@ for_window [app_id="Slack"] move container to workspace $chat_workspace
 # Scale Framework display
 output eDP-1 scale 1.25
 
+# External monitor layout (never more than 2 screens total):
+#   - the laptop stays at the origin
+#   - any extra screen sits to the right of the laptop by default
+#   - the Samsung LS24A600U specifically goes above the laptop instead
+# The external is matched by make/model/serial so it works on any port.
+output * pos 1804 0
+output eDP-1 pos 0 0
+output "Samsung Electric Company LS24A600U H4ZT700007" pos 0 -1440
+
 # idle management
 exec swayidle -w \
          timeout 300 'swaylock -f -c 000000' \
