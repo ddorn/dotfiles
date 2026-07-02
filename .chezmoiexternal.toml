@@ -11,6 +11,7 @@
 {{ $zsh_hl  := output $old_commit "zsh-users/zsh-syntax-highlighting" | trim -}}
 {{ $zsh_as  := output $old_commit "zsh-users/zsh-autosuggestions" | trim -}}
 {{ $zsh_hss := output $old_commit "zsh-users/zsh-history-substring-search" | trim -}}
+{{ $lilex   := output $delayed_release "mishamyrt/Lilex" | trim -}}
 
 [".oh-my-zsh"]
     type = "archive"
@@ -41,6 +42,16 @@
     url = "https://vault.bitwarden.com/download/?app=cli&platform=linux"
     path = "bw"
     executable = true
+
+# Lilex monospace font (all weights, static TTFs). Selected as the generic
+# "monospace" family in dot_config/fontconfig/fonts.conf.
+[".local/share/fonts/Lilex"]
+    type = "archive"
+    url = "https://github.com/mishamyrt/Lilex/releases/download/{{ $lilex }}/Lilex.zip"
+    exact = true
+    include = ["ttf/**"]
+    stripComponents = 1
+    refreshPeriod = "720h"
 
 {{- if eq .role "work-laptop" }}
 
