@@ -37,10 +37,6 @@ source "$ZSH/oh-my-zsh.sh"
 # ── PROMPT & SHELL TOOLS ─────────────────────────────────────────────────────
 eval "$(starship init zsh)"
 
-{{- if eq .chezmoi.hostname "pando" }}
-eval "$(jump shell)"
-{{- end }}
-
 # direnv hook — uses whatever direnv is in PATH (works for both /usr/bin and ~/.local/bin)
 _direnv_hook() {
     trap -- '' SIGINT
