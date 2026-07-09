@@ -42,14 +42,31 @@ compress-mp4() { ffmpeg -i "$1" -vcodec libx265 -crf 28 "compressed-$1"; }
 
 {{- if hasSuffix "laptop" .role }}
 mirror() {
+    # Mirror the focused output onto the other one. Works under both niri and
+    # sway, detected via their respective IPC socket env vars.
     local focused other
-    focused=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
-    other=$(swaymsg -t get_outputs | jq -r --arg f "$focused" '.[] | select(.name != $f) | .name' | head -n 1)
-    if [[ -z "$other" ]]; then echo "No other output found"; return 1; fi
-    wl-mirror "$focused" & disown
-    sleep 0.5
-    swaymsg "[app_id=\"wl_mirror\"]" move output "$other"
-    swaymsg "[app_id=\"wl_mirror\"]" fullscreen
+    if [[ -n "$NIRI_SOCKET" ]]; then
+        focused=$(niri msg --json focused-output | jq -r '.name')
+        other=$(niri msg --json outputs | jq -r --arg f "$focused" 'keys[] | select(. != $f)' | head -n 1)
+        if [[ -z "$other" ]]; then echo "No other output found"; return 1; fi
+        wl-mirror "$focused" & disown
+        sleep 0.6
+        local id
+        id=$(niri msg --json windows | jq -r '.[] | select(.app_id=="wl_mirror") | .id' | head -n 1)
+        if [[ -z "$id" ]]; then echo "wl-mirror window not found"; return 1; fi
+        niri msg action move-window-to-monitor --id "$id" "$other"
+        niri msg action fullscreen-window --id "$id"
+    elif [[ -n "$SWAYSOCK" ]]; then
+        focused=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
+        other=$(swaymsg -t get_outputs | jq -r --arg f "$focused" '.[] | select(.name != $f) | .name' | head -n 1)
+        if [[ -z "$other" ]]; then echo "No other output found"; return 1; fi
+        wl-mirror "$focused" & disown
+        sleep 0.5
+        swaymsg "[app_id=\"wl_mirror\"]" move output "$other"
+        swaymsg "[app_id=\"wl_mirror\"]" fullscreen
+    else
+        echo "mirror: no niri (\$NIRI_SOCKET) or sway (\$SWAYSOCK) session detected"; return 1
+    fi
 }
 {{- end }}
 
@@ -78,15 +95,41 @@ alias azerty="swaymsg input '*' xkb_layout us"
 # ── STARTUP ──────────────────────────────────────────────────────────────────
 {{- if hasSuffix "laptop" .role }}
 if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
+    # Shared Wayland environment (compositor-agnostic).
     export SDL_VIDEODRIVER=wayland
     export _JAVA_AWT_WM_NONREPARENTING=1
     export QT_QPA_PLATFORM=wayland
-    export XDG_CURRENT_DESKTOP=sway
-    export XDG_SESSION_DESKTOP=sway
     export MOZ_ENABLE_WAYLAND=1
     export QT_SCREEN_SCALE_FACTORS="0.66666;1"
     export ELECTRON_OZONE_PLATFORM_HINT=wayland
-    exec sway
+
+    # Pick a compositor: auto-launch the only one installed, else prompt (5s,
+    # default niri). niri MUST go through niri-session so it sets up the session
+    # environment (XDG_CURRENT_DESKTOP, dbus/systemd activation env) — launching
+    # bare `niri` leaves stale env and breaks portals (file pickers etc.).
+    if command -v niri-session >/dev/null && command -v sway >/dev/null; then
+        printf 'Compositor?  [niri] / sway  (5s): '
+        read -t 5 _wm || true
+        echo
+    elif command -v niri-session >/dev/null; then
+        _wm=niri
+    elif command -v sway >/dev/null; then
+        _wm=sway
+    else
+        _wm=none
+    fi
+
+    case "${_wm:-niri}" in
+        none) ;;  # neither installed — fall through to the shell
+        s*|S*)
+            export XDG_CURRENT_DESKTOP=sway XDG_SESSION_DESKTOP=sway
+            exec sway
+            ;;
+        *)
+            export XDG_CURRENT_DESKTOP=niri XDG_SESSION_DESKTOP=niri
+            exec niri-session
+            ;;
+    esac
 fi
 {{- end }}
 
