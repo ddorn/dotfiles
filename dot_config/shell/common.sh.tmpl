@@ -122,10 +122,18 @@ if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
     case "${_wm:-niri}" in
         none) ;;  # neither installed — fall through to the shell
         s*|S*)
+            # Drop any stale niri marker so tools don't think niri is running.
+            unset NIRI_SOCKET
+            systemctl --user unset-environment NIRI_SOCKET 2>/dev/null
             export XDG_CURRENT_DESKTOP=sway XDG_SESSION_DESKTOP=sway
             exec sway
             ;;
         *)
+            # Drop any stale sway markers: sway doesn't clean these up on exit,
+            # and a leftover SWAYSOCK makes e.g. oh-my-zsh's bgnotify plugin run
+            # `swaymsg` on every prompt.
+            unset SWAYSOCK I3SOCK
+            systemctl --user unset-environment SWAYSOCK I3SOCK 2>/dev/null
             export XDG_CURRENT_DESKTOP=niri XDG_SESSION_DESKTOP=niri
             exec niri-session
             ;;

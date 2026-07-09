@@ -88,6 +88,13 @@ input {
 // children — so it fixes them from every entry point at once.
 environment {
     ELECTRON_OZONE_PLATFORM_HINT "wayland"
+
+    // A stale SWAYSOCK left behind by a previous sway session makes tools believe
+    // sway is running — e.g. oh-my-zsh's bgnotify plugin shells out to
+    // `swaymsg -t get_tree` on every prompt and errors out. Unset it (and sway's
+    // other marker) for everything niri spawns.
+    SWAYSOCK null
+    I3SOCK null
 }
 
 // You can configure outputs by their name, which you can find
