@@ -1,0 +1,16 @@
+[Desktop Entry]
+# Local override of /usr/share/applications/beeper.desktop.
+# Beeper's bundled Electron ignores ELECTRON_OZONE_PLATFORM_HINT, so under niri
+# (no X server / no xwayland-satellite) it must be told to use Wayland
+# explicitly, or it dies with "Missing X server or $DISPLAY".
+Type=Application
+Name=Beeper
+GenericName=Unified Messenger
+Comment=The ultimate messaging app (with flag overrides)
+Exec=beeper --no-sandbox --ozone-platform=wayland %U
+Icon=beepertexts
+Terminal=false
+StartupWMClass=BeeperTexts
+X-AppImage-Version=4.2.670
+MimeType=x-scheme-handler/beeper;x-scheme-handler/matrix;x-scheme-handler/element;
+Categories=Network;InstantMessaging;
