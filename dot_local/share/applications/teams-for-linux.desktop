@@ -1,0 +1,19 @@
+[Desktop Entry]
+# Local override of /usr/share/applications/teams-for-linux.desktop, which
+# hardcodes `--ozone-platform=x11`. niri has no X server (no xwayland-satellite),
+# so that entry dies with "Missing X server or $DISPLAY". The system file is
+# package-owned and is rewritten on every teams-for-linux upgrade, hence this
+# override rather than editing it in place.
+#
+# WebRTCPipeWireCapturer is required for screen sharing to work on Wayland;
+# without it teams-for-linux warns and screen sharing misbehaves. Note Chromium
+# keeps only the LAST --enable-features flag, so all features go on one.
+Name=Teams for Linux
+Exec=/opt/teams-for-linux/teams-for-linux --ozone-platform=wayland --enable-features=WaylandWindowDecorations,WebRTCPipeWireCapturer %U
+Terminal=false
+Type=Application
+Icon=teams-for-linux
+StartupWMClass=teams-for-linux
+Comment=Unofficial Microsoft Teams client for Linux using Electron. It uses the Web App and wraps it as a standalone application using Electron.
+MimeType=x-scheme-handler/msteams;
+Categories=Chat;Network;Office;
