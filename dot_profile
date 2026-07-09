@@ -1,3 +1,7 @@
-XDG_CURRENT_DESKTOP=sway
+# NB: do not set XDG_CURRENT_DESKTOP here. The compositor owns it: the tty1
+# chooser in ~/.config/shell/common.sh exports niri or sway, and niri-session
+# propagates it to the systemd/dbus activation environment. A hardcoded value
+# here would make xdg-desktop-portal load the wrong backend config and silently
+# break file dialogs.
 
 export PATH="$HOME/.local/bin:$PATH"

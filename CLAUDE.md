@@ -51,7 +51,7 @@ Role-based conditionals throughout:
 {{ end }}
 ```
 
-Key templated files: `.zshrc`, sway config (terminal selection), SSH config (personal-laptop only), rclone config, netrc, git-credentials, wakatime config.
+Key templated files: `.zshrc`, sway config and niri config (terminal selection, outputs, per-role autostart), SSH config (personal-laptop only), rclone config, netrc, git-credentials, wakatime config.
 
 ## The backup system
 
@@ -86,7 +86,10 @@ python .chezmoiscripts/run_onchange_before_refresh-secrets.py
 
 ## Non-obvious things
 
-- **Sway auto-launches** from `.zshrc` when on tty1 and role is laptop. Don't add terminal emulator startup logic elsewhere.
+- **A compositor auto-launches** from `.zshrc` (via `dot_config/shell/common.sh.tmpl`) when on tty1 and role is laptop. It auto-launches whichever of niri/sway is installed, or prompts (5s, default niri) when both are. Don't add terminal emulator startup logic elsewhere.
+- **niri must be started via `niri-session`, never bare `niri`.** Only `niri-session` sets `XDG_CURRENT_DESKTOP=niri` and pushes it into the systemd/dbus activation environment. Bare `niri` inherits a stale value (sway doesn't clear its own on exit), which makes `xdg-desktop-portal` load the wrong backend config and silently breaks file dialogs.
+- **Sway leaks env markers.** `SWAYSOCK`/`I3SOCK` survive a sway session, and tools gate on them (e.g. oh-my-zsh's `bgnotify` shells out to `swaymsg` every prompt). niri's config unsets them for everything it spawns; the tty1 chooser also clears them (and clears `NIRI_SOCKET` when choosing sway).
+- **Electron apps need three different Wayland mechanisms.** System-electron apps (Obsidian) read `~/.config/electron-flags.conf`; Marvin honours the `ELECTRON_OZONE_PLATFORM_HINT` env var set in niri's `environment` block; Beeper's older bundled Electron ignores both and needs an explicit `--ozone-platform=wayland` flag (hence the local `.desktop` override). `--ozone-platform-hint=auto` does *not* reliably pick Wayland.
 - **ranger and bat are on both machines**, but installed differently. On personal-laptop they come from pacman. On work-laptop (no admin rights), chezmoi downloads them into userspace via `.chezmoiexternal.toml`. The `.chezmoiignore.tmpl` excludes `~/.local/bin/ranger` on personal-laptop because that path is only needed for the tarball-based install.
 - **The core work-laptop pattern**: if a tool can't be installed via pacman due to no admin rights, it goes into `.chezmoiexternal.toml` as a file/archive download to `~/.local/bin`.
 - **`.chezmoidata.toml` in root** looks like config but is a runtime-generated secrets cache. Do not add permanent config there.

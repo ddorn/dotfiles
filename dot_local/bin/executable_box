@@ -157,13 +157,16 @@ exec bwrap \
   --setenv BOX_PROJECT "$(basename "$PROJECT")" \
   `# ^ marker the prompt reads to show "(box-<project>)"` \
   --unsetenv SWAYSOCK \
-  `# ^ The sway IPC socket lives under /run (tmpfs is mounted over it here),` \
-  `#   so the inherited SWAYSOCK is stale: drop it, else swaymsg clients` \
-  `#   (e.g. the bgnotify zsh plugin) spam connection errors every prompt.` \
-  `#   Do NOT bind the socket to fix this. The sway IPC has an exec verb and` \
-  `#   sway runs OUTSIDE the sandbox, so swaymsg exec sh -c ... would spawn` \
-  `#   arbitrary commands on the host with your full privileges: a complete` \
-  `#   sandbox escape. Keeping it unset is the whole point.` \
+  --unsetenv NIRI_SOCKET \
+  `# ^ The compositor IPC sockets live under /run (tmpfs is mounted over it` \
+  `#   here), so the inherited SWAYSOCK and NIRI_SOCKET are stale: drop them,` \
+  `#   else IPC clients spam connection errors every prompt (the bgnotify zsh` \
+  `#   plugin keys off SWAYSOCK; the mirror shell helper keys off NIRI_SOCKET).` \
+  `#   Do NOT bind the sockets to fix this. Both IPCs expose an exec verb --` \
+  `#   sway has exec, niri has action spawn -- and the compositor runs OUTSIDE` \
+  `#   the sandbox, so a client inside could spawn arbitrary commands on the` \
+  `#   host with your full privileges: a complete sandbox escape. Keeping them` \
+  `#   unset is the whole point.` \
   --chdir "$PROJECT" \
   --unshare-user \
   --unshare-ipc \

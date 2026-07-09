@@ -124,10 +124,19 @@ def is_camera_active() -> bool:
 def is_screen_sharing() -> bool:
     """Return True if a screen-share (screencast) session is currently active.
 
-    On Sway/wlroots, sharing the screen makes xdg-desktop-portal-wlr publish a
-    PipeWire node named "xdg-desktop-portal-wlr"; that node only exists while a
-    screencast is live, so its presence is a precise marker. Uses `pw-dump`;
-    degrades gracefully (returns False) if it's missing or unparseable.
+    Whoever produces the screencast publishes a PipeWire node that exists only
+    while the cast is live, so its presence is a precise marker. The producer
+    differs per compositor:
+
+      - Sway/wlroots: xdg-desktop-portal-wlr publishes "xdg-desktop-portal-wlr"
+        (media.class Video/Source).
+      - niri: niri implements org.gnome.Mutter.ScreenCast itself, so it
+        publishes the node directly, named "niri" (media.class
+        Stream/Output/Video). Note it is NOT a Video/Source, so do not filter
+        on media.class.
+
+    Uses `pw-dump`; degrades gracefully (returns False) if it is missing or
+    unparseable.
     """
     try:
         result = subprocess.run(["pw-dump"], capture_output=True, text=True, check=True)
@@ -145,7 +154,8 @@ def is_screen_sharing() -> bool:
         if obj.get("type") != "PipeWire:Interface:Node":
             continue
         props = (obj.get("info") or {}).get("props") or {}
-        if (props.get("node.name") or "").startswith("xdg-desktop-portal-wlr"):
+        node_name = props.get("node.name") or ""
+        if node_name == "niri" or node_name.startswith("xdg-desktop-portal-"):
             return True
     return False
 
