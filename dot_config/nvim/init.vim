@@ -70,3 +70,22 @@ nnoremap <leader>fr :set spell spelllang=fr<CR>
 
 " Nerdtree
 nnoremap <C-t> :NERDTreeToggle<CR>
+
+" ── Secret hygiene ───────────────────────────────────────────────────────────
+" Nvim persists buffer content to disk in ways that outlive the file itself:
+" swapfiles (~/.local/state/nvim/swap), undofiles, and shada (which stores
+" register contents — i.e. anything yanked). An OPENAI_API_KEY was once
+" recovered from a swapfile months after the .envrc it came from was deleted.
+" See prog/infra/secrets.md.
+
+" Don't persist yanked text across sessions. `<0` = save no register lines,
+" `s10` = skip items larger than 10KB. Marks and history still work.
+set shada='100,<0,s10,h
+
+" For files that hold secrets — including the temp file sops hands the editor,
+" which keeps the original name (e.g. secrets.enc.yaml) under /tmp/sops*.
+augroup secret_files
+    autocmd!
+    autocmd BufNewFile,BufReadPre *.enc.yaml,*.enc.yml,*.enc.json,*.enc.env,.env,.env.*,.envrc,*.age,/tmp/sops*/*
+        \ setlocal noswapfile noundofile nobackup nowritebackup
+augroup END

@@ -1,0 +1,21 @@
+# age identities for YubiKey-backed sops.
+#
+# This is the DEFAULT path sops looks for (~/.config/sops/age/keys.txt), so no
+# SOPS_AGE_KEY_FILE export is needed.
+#
+# These are NOT secret. Each line is a stub encoding a serial + PIV slot; the
+# actual private key is non-exportable and never leaves the YubiKey. Mode 600 is
+# defence in depth, not a requirement.
+#
+# Both keys are interchangeable — either decrypts anything encrypted to both.
+# Requires `age-plugin-yubikey` on PATH and a running pcscd.
+#
+# See prog/infra/secrets.md for the full setup, rationale and recovery notes.
+
+#       Serial: 37370930, Slot: 1, Name: diego-yk-30
+#    Recipient: age1yubikey1qwaxvn3v0r4jvt7dx54wc524thdxp35a2zf9xexjagnhj5wyvlepjrlfar9
+AGE-PLUGIN-YUBIKEY-1XG7R5Q5ZHX2694SSEC9PC
+
+#       Serial: 37370931, Slot: 1, Name: diego-yk-31
+#    Recipient: age1yubikey1qtmg7ux22wsxlc7h8zta5cqwxmttqyn9edwkdjfgrmhnjgfu576ww7p0w20
+AGE-PLUGIN-YUBIKEY-1XV7R5Q5ZTW4AXCGGMQXCF
