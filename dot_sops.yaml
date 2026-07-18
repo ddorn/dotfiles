@@ -1,0 +1,22 @@
+# Global sops config → ~/.sops.yaml
+#
+# Both keys are recipients on everything: either decrypts, neither is
+# privileged, each is the other's backup. There is no offline backup key, so
+# nothing irreplaceable should be encrypted with these.
+#
+# If a key is lost or added, update this file, then `sops updatekeys` over every
+# existing encrypted file. See prog/infra/secrets.md.
+
+keys:
+  - &yk30 age1yubikey1qwaxvn3v0r4jvt7dx54wc524thdxp35a2zf9xexjagnhj5wyvlepjrlfar9
+  - &yk31 age1yubikey1qtmg7ux22wsxlc7h8zta5cqwxmttqyn9edwkdjfgrmhnjgfu576ww7p0w20
+
+creation_rules:
+  # Matches the same *.enc.* convention as the repo config, rather than
+  # everything — encrypting should stay an explicit act, signalled by the
+  # filename, not something that happens to any yaml you edit.
+  - path_regex: \.enc\.(yaml|yml|json|env)$
+    key_groups:
+      - age:
+          - *yk30
+          - *yk31
