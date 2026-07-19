@@ -1,25 +1,25 @@
+# Backup config for *this machine* (pando). One file per machine — the configs for the
+# other machines live in other-machines/ for reference only; they are deployed from
+# prog/infra/deploy, not by chezmoi.
+
+directories:
+  - /home/diego
+
 remotes:
-  rsyncnet:
+  - name: rsyncnet
     url: sftp:zh2012@zh2012.rsync.net:backups
     quota: ssh rsyncnet quota
-  hetzner-storage:
+  - name: hetzner-storage
     url: sftp:hetzner-storage:backups
     quota: ssh hetzner-storage df -h
-  abuelo:
-    url: sftp:abuelo:backups
-    quota: ssh abuelo df -h /mnt/jacky ~
 
-machines:
-  pando:
-    directories_to_backup:
-      - /home/diego
-    remotes:
-      - rsyncnet
-      - hetzner-storage
+# Prints KEY=value lines: RESTIC_PASSWORD and HEALTHCHECKS_PING_KEY.
+# Run once per invocation, so one YubiKey touch covers both secrets. Inherits stdin/stderr
+# so the plugin's touch prompt reaches the terminal.
+# Bitwarden remains the source of truth: if this file is ever lost, re-create it from the
+# "restic backups" and "healthchecks-ping-key" entries and `sops -e` it again.
+secrets_command: sops -d /home/diego/.config/restic/secrets.enc.env
 
-  abuelo:
-    directories_to_backup:
-      - /home/diego
-      - /mnt/jacky
-    remotes:
-      - hetzner-storage
+notify_command: notify-send -t 30000 "Restic Backup"
+
+package_list_command: pacman -Qe

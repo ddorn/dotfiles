@@ -9,16 +9,16 @@
 # ]
 # ///
 
-from functools import cached_property, cache
+from functools import cache
 import os
+import shlex
 import socket
 import json
 from pathlib import Path
 import subprocess
 import datetime
-import sys
-from typing import Self, Sequence
-import shlex
+import urllib.request
+from typing import Sequence
 
 import typer
 from rich.spinner import Spinner
@@ -32,12 +32,13 @@ import yaml
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
-CONFIG_DIR = Path("/home/diego/.config/restic")
+# Overridable so the same script works as a user service on pando/abuelo and as a *root*
+# system service on brimmon, where the data being backed up (/data/coolify, mode 700 root)
+# is unreadable by diego. pyinfra sets BACKUP_CONFIG_DIR in the unit file; it is not meant
+# to be set by hand.
+CONFIG_DIR = Path(os.environ.get("BACKUP_CONFIG_DIR", "/home/diego/.config/restic"))
 CONFIG_FILE = CONFIG_DIR / "backupcfg.yaml"
-SCRIPT_FILE = Path.home() / ".local" / "bin" / "backup"
 EXCLUDE_FILE = CONFIG_DIR / "exclude"
-SYSTEMD_SERVICE = CONFIG_DIR / "backup.service"
-SYSTEMD_TIMER = CONFIG_DIR / "backup.timer"
 EXPLICITLY_INSTALLED_PACKAGES_FILE = CONFIG_DIR / "explicitly_installed_packages.txt"
 
 DATA_DIR = Path.home() / ".cache" / "backups"
@@ -46,88 +47,58 @@ LAST_BIG_DIR_FORMAT = "%Y-%m-%d_%H_%M_%S.json"
 DONT_ASK_FOR_BACKUP_FILE = DATA_DIR / "dont_ask_for_backup_until"
 
 
-# Those are sent over to the remote machine when deploying
-ALL_CODE_FILES = [
-    CONFIG_FILE,
-    SCRIPT_FILE,
-    EXCLUDE_FILE,
-    SYSTEMD_SERVICE,
-    SYSTEMD_TIMER,
-]
-
-
-DRY_RUN = False
 VERBOSE = False
 
 
-class BackupConfig(BaseModel):
+class Remote(BaseModel):
+    name: str
+    """Name used to select this remote on the command line"""
+    url: str
+    """URL of the restic repository, passed to restic -r"""
+    quota: str
+    """Command that prints quota information for the remote."""
 
-    class RemoteConfig(BaseModel):
-        url: str
-        """URL of the restic repository, passed to restic -r"""
-        quota: str
-        """Command that prints quota information for the remote."""
 
-    remotes: dict[str, RemoteConfig]
-    """All available remotes, with arbitrary names"""
+class Config(BaseModel):
+    """The config of the machine this script runs on. One file per machine."""
 
-    class MachineConfig(BaseModel):
-        directories_to_backup: list[str]
-        """Which folders on the machine to backup"""
-        remotes: list[str]
-        """Names of the remotes to backup the directories"""
+    directories: list[str]
+    """Which folders on this machine to backup"""
+    remotes: list[Remote]
+    """Where to back them up, all of them, in order"""
+    secrets_command: str
+    """Shell command printing KEY=value lines: RESTIC_PASSWORD, HEALTHCHECKS_PING_KEY.
 
-    machines: dict[str, MachineConfig]
-    """Configuration for each machine"""
+    Run once per invocation, so a single unlock covers every secret. Run with the parent's
+    stdin/stderr so interactive unlock prompts still work.
+    """
+    notify_command: str = ""
+    """Desktop notification command; the message is appended as one final argument.
 
-    @cached_property
-    def current_machine(self) -> MachineConfig:
-        hostname = socket.gethostname()
-        return self.machines[hostname]
+    Empty on headless machines, where notifying is a no-op rather than a failure.
+    """
+    package_list_command: str = ""
+    """Shell command listing explicitly installed packages, saved alongside the backup."""
 
-    @classmethod
-    @cache
-    def read(cls) -> Self:
-        return cls.model_validate(yaml.safe_load(CONFIG_FILE.read_text()))
+    def remote(self, name: str) -> Remote:
+        for remote in self.remotes:
+            if remote.name == name:
+                return remote
+        valid = ", ".join(r.name for r in self.remotes)
+        rprint(f"[red]Critical: remote {name} not found. Valid remotes are: {valid}")
+        raise typer.Exit(1)
 
-    def get_remote(self, name: str) -> RemoteConfig:
-        try:
-            return self.remotes[name]
-        except KeyError:
-            valid_remotes = ", ".join(self.remotes.keys())
-            msg = f"Remote {name} not found. Valid remotes are: {valid_remotes}"
-            rprint(f"[red]Critical: {msg}")
-            raise ValueError(msg)
+
+@cache
+def config() -> Config:
+    return Config.model_validate(yaml.safe_load(CONFIG_FILE.read_text()))
 
 
 @app.callback(invoke_without_command=True)
-def main(
-    ctx: typer.Context,
-    from_: str = typer.Option(None, "--from", help="Machine to backup from."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Don't modify any file."),
-    verbose: bool = False,
-):
-    """Backup machines (local or distant) to multiple remotes."""
-    global DRY_RUN, VERBOSE
-    DRY_RUN = dry_run
+def main(ctx: typer.Context, verbose: bool = False):
+    """Backup this machine to multiple remotes."""
+    global VERBOSE
     VERBOSE = verbose
-
-    if from_ is not None:
-        copy_script_to(from_)
-        # Then we run it remotely, inside a tmux, without the --from flag
-
-        args = remove_cli_arg(sys.argv, "--from")
-        args[0] = str(SCRIPT_FILE)
-
-        # Create a new tmux session called backup and send the keys to type the command there.
-        # This is not rebust, but it's good enough for now
-        keys = shlex.join(args)
-        keys = keys.replace(" ", " SPACE ") + " ENTER"
-        cmd = "tmux new-session -ds backup || true && tmux send-keys -t backup " + keys
-
-        run(["ssh", from_, cmd])
-        # Replace the current process with the open tmux with the command running
-        os.execvp("ssh", ["ssh", "-t", from_, "tmux", "-u", "attach", "-t", "backup"])
 
 
 @app.command()
@@ -149,28 +120,33 @@ def backup(yes: bool = typer.Option(False, help="Don't ask for confirmation"), i
     if not yes and changes and not Confirm.ask("Do you want to continue?"):
         raise typer.Abort()
 
+    # Only now is a backup actually happening: a snoozed or declined run pings nothing,
+    # so healthchecks reports it as a missed backup rather than a successful one.
+    ping_healthcheck("start")
+
     # Perform the backup for each remote, and collect errors
-    config = BackupConfig.read()
     errors = []
-    for remote in config.current_machine.remotes:
+    for remote in config().remotes:
         try:
-            backup_to(remote)
+            backup_to(remote.name)
         except Exception as e:
-            rprint(f"[red]Error backing up to {remote}: {e}")
-            notify(f"Error backing up to {remote}: {e}")
-            errors.append((remote, e))
+            rprint(f"[red]Error backing up to {remote.name}: {e}")
+            notify(f"Error backing up to {remote.name}: {e}")
+            errors.append((remote.name, e))
 
     # Show disk usage for each remote
-    for remote in config.current_machine.remotes:
-        rprint(f"[yellow]Disk usage on {remote}")
-        run(config.get_remote(remote).quota.split())
+    for remote in config().remotes:
+        rprint(f"[yellow]Disk usage on {remote.name}")
+        run(shlex.split(remote.quota))
 
     if errors:
-        for remote, error in errors:
-            rprint(f"[red]🚨 Critical error for {remote}: {error}")
+        for name, error in errors:
+            rprint(f"[red]🚨 Critical error for {name}: {error}")
+        ping_healthcheck("fail", "\n".join(f"{name}: {error}" for name, error in errors))
     else:
         save_big_dirs(big_dirs)
         notify("🎉 Backups completed")
+        ping_healthcheck(body="Backed up to " + ", ".join(r.name for r in config().remotes))
 
 
 def dont_ask_until(minutes: int):
@@ -200,14 +176,13 @@ def get_all_last_big_dirs_files() -> dict[datetime.datetime, Path]:
 
     return all_files
 
-def save_big_dirs(big_dirs: dict[str, int]) -> Path | None:
+def save_big_dirs(big_dirs: dict[str, int]) -> Path:
     """Write the big directories to a file."""
-    if not DRY_RUN:
-        LAST_DIRS_FOLDER.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.datetime.now().strftime(LAST_BIG_DIR_FORMAT)
-        file = LAST_DIRS_FOLDER / timestamp
-        file.write_text(json.dumps(big_dirs))
-        return file
+    LAST_DIRS_FOLDER.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime(LAST_BIG_DIR_FORMAT)
+    file = LAST_DIRS_FOLDER / timestamp
+    file.write_text(json.dumps(big_dirs))
+    return file
 
 def get_last_big_dirs() -> dict[str, int]:
     """Get the last recorded big directories with their sizes."""
@@ -272,33 +247,6 @@ def list_big_dirs(threshold: str = "50M", save: bool = False):
 
 
 @app.command()
-def install(remove: bool = False):
-    """♾  Run the backup script with systemd every day."""
-
-    # Copy the systemd files
-    user_systemd_folder = Path("/home/diego/.config/systemd/user")
-    target_service = user_systemd_folder / "backup.service"
-    target_timer = user_systemd_folder / "backup.timer"
-
-    if remove:
-        try:
-            run(["systemctl", "--user", "disable", "--now", "backup.timer"], dry_run=DRY_RUN)
-        except subprocess.CalledProcessError:
-            pass
-        run(["rm", target_service], dry_run=DRY_RUN)
-        run(["rm", target_timer], dry_run=DRY_RUN)
-    else:
-        run(["mkdir", "-p", user_systemd_folder], dry_run=DRY_RUN)
-        run(["ln", "-s", SYSTEMD_SERVICE, target_service], dry_run=DRY_RUN)
-        run(["ln", "-s", SYSTEMD_TIMER, target_timer], dry_run=DRY_RUN)
-
-        # Enable the timer
-        run(["systemctl", "--user", "enable", "--now", "backup.timer"], dry_run=DRY_RUN)
-        run(["systemctl", "--user", "status", "backup.timer"], dry_run=DRY_RUN)
-    rprint("✅ Installed systemd timer")
-
-
-@app.command()
 def backup_to(remote: str):
     """Backup to a given remote."""
 
@@ -306,10 +254,6 @@ def backup_to(remote: str):
 
     save_explicitly_installed_packages()
 
-    config = BackupConfig.read()
-    directories_to_backup = config.current_machine.directories_to_backup
-
-    dry_run_arg = ["--dry-run"] if DRY_RUN else []
     call_restic(
         remote,
         "backup",
@@ -317,12 +261,11 @@ def backup_to(remote: str):
         EXCLUDE_FILE,
         # "--exclude-larger-than", "500M",
         "--verbose",
-        *dry_run_arg,
-        *directories_to_backup,
+        *config().directories,
     )
 
     # If monday, check integrity
-    if datetime.datetime.now().weekday() == 0 and not DRY_RUN:
+    if datetime.datetime.now().weekday() == 0:
         rprint("[yellow]Checking integrity")
         call_restic(remote, "check")
     else:
@@ -330,13 +273,8 @@ def backup_to(remote: str):
 
 
 @app.command()
-def forget(remote: str):
-    """Forget snapshots from a remote. --verbose and --dry-run can be passed *before* "forget"."""
-    args = []
-    if DRY_RUN:
-        args.append("--dry-run")
-    if VERBOSE:
-        args.append("--verbose")
+def forget(remote: str, dry_run: bool = typer.Option(False, "--dry-run", help="Don't remove anything.")):
+    """Forget snapshots from a remote."""
     call_restic(
         remote,
         "forget",
@@ -345,23 +283,33 @@ def forget(remote: str):
         "--keep-weekly", "5",
         "--keep-monthly", "18",
         "--keep-yearly", "1000",
-        *args,
+        *(["--dry-run"] if dry_run else []),
+        *(["--verbose"] if VERBOSE else []),
+    )
+
+
+@app.command()
+def prune(remote: str, dry_run: bool = typer.Option(False, "--dry-run", help="Don't remove anything.")):
+    """Reclaim space from forgotten snapshots on a remote."""
+    call_restic(
+        remote,
+        "prune",
+        *(["--dry-run"] if dry_run else []),
+        *(["--verbose"] if VERBOSE else []),
     )
 
 
 @app.command()
 def env(remote: str):
     """Print the environment variables for a remote."""
-    config = BackupConfig.read()
-    remote_url = config.get_remote(remote).url
-    print(f"export RESTIC_REPOSITORY={remote_url}")
+    print(f"export RESTIC_REPOSITORY={config().remote(remote).url}")
     print(f"export RESTIC_PASSWORD={get_restic_password()}")
 
 
 def get_list_of_big_directories(threshold: str = "50M") -> dict[str, int]:
     """Get a list directories larger than the threshold in the directories to backup."""
 
-    dirs_to_backup = BackupConfig.read().current_machine.directories_to_backup
+    dirs_to_backup = config().directories
 
     # Remove the /home/diego/ and other base dir prefix, which du doesn't want
     exclude_du_format = []
@@ -381,7 +329,7 @@ def get_list_of_big_directories(threshold: str = "50M") -> dict[str, int]:
                 "du",
                 f"--threshold={threshold}",
                 "--exclude-from=/tmp/exclude_du_format",
-                *BackupConfig.read().current_machine.directories_to_backup,
+                *dirs_to_backup,
             ]
         )
 
@@ -394,95 +342,89 @@ def get_list_of_big_directories(threshold: str = "50M") -> dict[str, int]:
 
 
 def save_explicitly_installed_packages():
-    """Save a list of explicitly installed packages to CONFIG_DIR."""
+    """Save the list of explicitly installed packages to CONFIG_DIR.
+
+    Best-effort: this is a restore *convenience*, so it must never fail a backup.
+    """
+    command = config().package_list_command
+    if not command:
+        return
+
     try:
-        out = check_output(["pacman", "-Qe"])
-        if not DRY_RUN:
-            EXPLICITLY_INSTALLED_PACKAGES_FILE.write_text(out)
-        if VERBOSE:
-            rprint(f"[green]Saved {len(out.splitlines())} explicitly installed packages to {EXPLICITLY_INSTALLED_PACKAGES_FILE}")
+        out = subprocess.check_output(command, shell=True, text=True)
     except subprocess.CalledProcessError as e:
-        rprint(f"[yellow]Warning: Could not get explicitly installed packages: {e}")
+        rprint(f"[yellow]Warning: package_list_command failed (exit {e.returncode}), not saving the package list")
+        return
+
+    EXPLICITLY_INSTALLED_PACKAGES_FILE.write_text(out)
+    if VERBOSE:
+        rprint(f"[green]Saved {len(out.splitlines())} packages to {EXPLICITLY_INSTALLED_PACKAGES_FILE}")
 
 
 @cache
+def get_secrets() -> dict[str, str]:
+    """Run secrets_command once and parse its KEY=value output.
+
+    One invocation for every secret, so unlocking Bitwarden (or touching the YubiKey, once
+    this is sops) happens a single time per run.
+    """
+    command = config().secrets_command
+    try:
+        out = subprocess.check_output(command, shell=True, text=True)
+    except subprocess.CalledProcessError as e:
+        rprint(f"[red]Critical: secrets_command failed (exit {e.returncode})")
+        raise typer.Exit(1)
+
+    secrets = {}
+    for line in out.splitlines():
+        key, sep, value = line.partition("=")
+        if sep:
+            secrets[key.strip()] = value.strip()
+    return secrets
+
+
 def get_restic_password() -> str:
-    """Fetch the restic password from the environment or Bitwarden."""
-    if password := os.environ.get("RESTIC_PASSWORD"):
-        return password
-    while True:
-        rprint("[yellow]Unlocking Bitwarden...")
-        try:
-            session = subprocess.check_output(["bw", "unlock", "--raw"], text=True).strip()
-            break
-        except subprocess.CalledProcessError:
-            rprint("[red]Failed to unlock Bitwarden, please try again.")
-    return subprocess.check_output(
-        ["bw", "get", "password", "restic backups", "--session", session],
-        text=True,
-    ).strip()
+    password = get_secrets().get("RESTIC_PASSWORD")
+    if not password:
+        # Worth its own branch: an empty password is accepted by restic and would silently
+        # create or open a *different*, unencrypted-in-practice repository.
+        rprint("[red]Critical: secrets_command produced no RESTIC_PASSWORD")
+        raise typer.Exit(1)
+    return password
+
+
+def ping_healthcheck(endpoint: str = "", body: str = ""):
+    """Report backup status to healthchecks.io. Never raises: monitoring must not break backups."""
+    try:
+        key = get_secrets().get("HEALTHCHECKS_PING_KEY")
+        if not key:
+            rprint("[yellow]Warning: no HEALTHCHECKS_PING_KEY from secrets_command, not pinging healthchecks")
+            return
+
+        url = f"https://hc-ping.com/{key}/backup-{socket.gethostname()}"
+        if endpoint:
+            url += f"/{endpoint}"
+
+        urllib.request.urlopen(url, data=body.encode()[:100_000], timeout=10)
+    except Exception as e:
+        rprint(f"[yellow]Warning: healthcheck ping failed: {e}")
 
 
 def call_restic(remote: str, *args: str | Path):
-    config = BackupConfig.read()
-    remote_url = config.get_remote(remote).url
-
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = get_restic_password()
 
-    cmd: list[str | Path] = [
-        "restic",
-        "-r",
-        remote_url,
-        *args,
-    ]
+    cmd: list[str | Path] = ["restic", "-r", config().remote(remote).url, *args]
     return run(cmd, env=env)
 
 
-def copy_script_to(machine: str):
-    """Copy the backup script to a remote machine."""
-
-    machines = BackupConfig.read().machines
-    if machine not in machines:
-        valid_machines = ", ".join(machines.keys())
-        rprint(f"[red]Machine {machine} not found in config. Valid machines are: {valid_machines}")
-        raise typer.Exit()
-
-    if machine == socket.gethostname():
-        return
-
-
-    # Send the code to the remote machine
-    run(["scp", *ALL_CODE_FILES, f"{machine}:{CONFIG_DIR}"], hide_output=not VERBOSE)
-
-    rprint(f"✅ Code synced to [yellow]{machine}[/]!")
-
-
-@app.command()
-def deploy():
-    """Deploy the backup script to all machines."""
-    config = BackupConfig.read()
-    for machine in config.machines:
-        copy_script_to(machine)
-
-
-def run(command: Sequence[str | Path], hide_output: bool = False, dry_run: bool = False, env: dict | None = None):
-
+def run(command: Sequence[str | Path], env: dict | None = None):
     command = [str(arg) for arg in command]
 
     if VERBOSE:
-        dry = "Dry " if dry_run else ""
-        rprint(f"[grey]{dry}Running: {command}", flush=True)
+        rprint(f"[grey]Running: {command}", flush=True)
 
-    if hide_output:
-        stdout = subprocess.DEVNULL
-    else:
-        stdout = None
-
-    if dry_run:
-        return 0
-    else:
-        return subprocess.check_call(command, stdout=stdout, env=env)
+    return subprocess.check_call(command, env=env)
 
 
 def check_output(command: list[str | Path]):
@@ -495,28 +437,16 @@ def check_output(command: list[str | Path]):
 # Utilities
 
 
-def notify(message: str, critical: bool = False):
-    """Send a desktop notification."""
-    cmd = ["notify-send", "-t", "30000", "Restic Backup", message]
-    if critical:
-        cmd += ["-u", "critical"]
+def notify(message: str):
+    """Send a desktop notification, if this machine has one to send to."""
+    command = config().notify_command
+    if not command:
+        return
+
     try:
-        run(cmd)
+        run([*shlex.split(command), message])
     except Exception as e:
         rprint(f"[red]Error sending notification: {e}")
-
-
-def remove_cli_arg(args: list[str], arg_name: str):
-    """Remove an argument from the command line. Supports both --name value and --name=value."""
-    for i, arg in enumerate(args):
-        if arg.startswith(f"{arg_name}="):
-            del args[i]
-            return args
-        if arg == arg_name:
-            del args[i]
-            del args[i]
-            return args
-    return args
 
 
 UNITS_MAPPING = [

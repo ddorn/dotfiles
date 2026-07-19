@@ -55,12 +55,12 @@ Key templated files: `.zshrc`, sway config and niri config (terminal selection, 
 
 ## The backup system
 
-`dot_local/bin/executable_backup.py` is a substantial (~550 line) standalone script that:
-- Reads `dot_config/restic/backupcfg.yaml` for multi-machine/multi-remote config
-- Fetches the restic password from Bitwarden at runtime (independent of chezmoi's secret cache)
-- Supports remotes: rsyncnet, hetzner-storage, abuelo; different machines back up to different subsets of remotes because available storage sizes vary
-- Can deploy itself to remote machines via SCP
-- Manages its own cron/systemd timer installation
+`dot_local/bin/executable_backup.py` is a standalone script that:
+- Reads **one config file per machine** — `dot_config/restic/backupcfg.yaml` is *this* machine's (pando). The abuelo and brimmon configs belong in `prog/infra/deploy` (pyinfra), not here — drafts of them sit untracked in `dot_config/restic/other-machines/`, which chezmoi ignores, until that move happens. The script has no notion of hostnames or of machines other than the one it runs on.
+- Gets every secret from a single `secrets_command` in that config, which prints `KEY=value` lines (`RESTIC_PASSWORD`, `HEALTHCHECKS_PING_KEY`). One invocation per run, so one Bitwarden unlock — or, once this moves to sops, one YubiKey touch — covers both. Independent of chezmoi's secret cache.
+- Keeps everything machine-specific in the config rather than in Python: directories, remotes, `notify_command` (absent on headless machines, where notifying is a no-op), `package_list_command` (pacman vs apt-mark).
+- Different machines back up to different subsets of remotes because available storage sizes vary.
+- `forget` and `prune` are separate commands, run manually; the automated `backup` never expires snapshots.
 
 The backup excludes are in `dot_config/restic/exclude` (79-line list covering caches, build dirs, VCS internals, large media).
 

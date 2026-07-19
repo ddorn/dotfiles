@@ -6,6 +6,10 @@ scripts
 # Python bytecode caches, anywhere
 **/__pycache__
 
+# Backup configs for the other machines, kept for reference. They are deployed by
+# prog/infra/deploy, not by chezmoi.
+.config/restic/other-machines
+
 # Ranger runtime data (modified by ranger at runtime, extracted from archive)
 .local/share/ranger/bookmarks
 .local/share/ranger/history
