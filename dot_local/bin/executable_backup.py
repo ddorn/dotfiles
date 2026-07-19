@@ -32,11 +32,27 @@ import yaml
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
-# Overridable so the same script works as a user service on pando/abuelo and as a *root*
-# system service on brimmon, where the data being backed up (/data/coolify, mode 700 root)
-# is unreadable by diego. pyinfra sets BACKUP_CONFIG_DIR in the unit file; it is not meant
-# to be set by hand.
-CONFIG_DIR = Path(os.environ.get("BACKUP_CONFIG_DIR", "/home/diego/.config/restic"))
+# Two locations, discovered rather than configured: /etc/restic for the system install
+# (abuelo and brimmon, root system timers), ~/.config/restic for the per-user one (pando).
+# First one with a config wins.
+#
+# This replaced a BACKUP_CONFIG_DIR env var set in the unit file, whose default was a
+# hardcoded /home/diego/.config/restic — so a root service that lost the variable read
+# diego's config instead of failing.
+CONFIG_DIRS = (Path("/etc/restic"), Path.home() / ".config" / "restic")
+
+
+def _find_config_dir() -> Path:
+    for directory in CONFIG_DIRS:
+        if (directory / "backupcfg.yaml").is_file():
+            return directory
+    raise SystemExit(
+        "No backup config found in " + " or ".join(str(d) for d in CONFIG_DIRS)
+        + ". (/etc/restic is mode 700 — if it exists, you need to be root to read it.)"
+    )
+
+
+CONFIG_DIR = _find_config_dir()
 CONFIG_FILE = CONFIG_DIR / "backupcfg.yaml"
 EXCLUDE_FILE = CONFIG_DIR / "exclude"
 EXPLICITLY_INSTALLED_PACKAGES_FILE = CONFIG_DIR / "explicitly_installed_packages.txt"
