@@ -8,6 +8,8 @@ session_id=$(echo "$input" | jq -r '.session_id // ""')
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
 model=$(echo "$input" | jq -r '.model.display_name // .model.id // "Claude"')
 ctx_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
+ctx_tok=$(echo "$input" | jq -r '.context_window.total_input_tokens // empty')
+ctx_max=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
 effort=$(echo "$input" | jq -r '.effort.level // empty')
 rl_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 rl_resets=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
@@ -99,15 +101,34 @@ else
     usage_part=$(printf "${DIM}5h: --${RESET}")
 fi
 
-# ── Context % (secondary) ────────────────────────────────────────────────────
-if [ -n "$ctx_pct" ]; then
-    ctx_int=$(printf '%.0f' "$ctx_pct")
+# ── Context tokens (secondary) ───────────────────────────────────────────────
+# Prefer a real token count; fall back to pct × window size if not supplied.
+if [ -z "$ctx_tok" ] && [ -n "$ctx_pct" ]; then
+    ctx_tok=$(awk -v p="$ctx_pct" -v m="${ctx_max:-200000}" 'BEGIN{printf "%d", p*m/100}')
+fi
+
+if [ -n "$ctx_tok" ]; then
+    # Color keys off how full the window is, not the raw count. Compute it from
+    # the raw numbers when we can — used_percentage is rounded to a whole
+    # percent, which is a 10k-token step on a 1M window.
+    if [ -n "$ctx_max" ] && [ "$ctx_max" -gt 0 ] 2>/dev/null; then
+        ctx_int=$(awk -v t="$ctx_tok" -v m="$ctx_max" 'BEGIN{printf "%d", t*100/m}')
+    else
+        ctx_int=$(printf '%.0f' "${ctx_pct:-0}")
+    fi
     if   [ "$ctx_int" -lt 70 ]; then ctx_color="$GREEN"
     elif [ "$ctx_int" -lt 90 ]; then ctx_color="$YELLOW"
     else                              ctx_color="$RED"; fi
-    ctx_part=$(printf "${ctx_color}ctx ${ctx_int}%%${RESET}")
+
+    # 23400 → 23k, 1200000 → 1.2M, 940 → 940
+    ctx_label=$(awk -v t="$ctx_tok" 'BEGIN{
+        if (t >= 1000000) printf "%.1fM", t/1000000;
+        else if (t >= 1000) printf "%dk", int(t/1000);
+        else printf "%d", t;
+    }')
+    ctx_part=$(printf "${ctx_color}ctx ${ctx_label}${RESET}")
 else
-    ctx_part=$(printf "${DIM}ctx --%${RESET}")
+    ctx_part=$(printf "${DIM}ctx --${RESET}")
 fi
 
 # ── Single line output ────────────────────────────────────────────────────────
