@@ -8,13 +8,13 @@
 # existing encrypted file. See prog/infra/secrets.md.
 
 keys:
-  - &yk30 age1yubikey1qwaxvn3v0r4jvt7dx54wc524thdxp35a2zf9xexjagnhj5wyvlepjrlfar9
-  - &yk31 age1yubikey1qtmg7ux22wsxlc7h8zta5cqwxmttqyn9edwkdjfgrmhnjgfu576ww7p0w20
+  - &yk30 age1yubikey1qty3s6f6kgy95gydazgnluhztr6l5umaup0pxxkeg02p6xjnsa2wkk93san
+  - &yk31 age1yubikey1qddesalm8sn87c372z7guv37rprg7j5pnlldhk6helc7phhvwurmzq4mrsm
 
 creation_rules:
-  # Matches the same *.enc.* convention as the repo config, rather than
-  # everything — encrypting should stay an explicit act, signalled by the
-  # filename, not something that happens to any yaml you edit.
+  # Matches *.enc.* rather than everything — encrypting should stay an explicit
+  # act, signalled by the filename, not something that happens to any yaml you
+  # edit.
   - path_regex: \.enc\.(yaml|yml|json|env)$
     key_groups:
       - age:

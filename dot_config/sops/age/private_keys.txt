@@ -10,12 +10,16 @@
 # Both keys are interchangeable — either decrypts anything encrypted to both.
 # Requires `age-plugin-yubikey` on PATH and a running pcscd.
 #
+# Decryption takes a touch and no PIN. Regenerating a key (new PIN/touch policy,
+# lost key) changes its recipient, so these stubs and ~/.sops.yaml must be
+# updated together.
+#
 # See prog/infra/secrets.md for the full setup, rationale and recovery notes.
 
 #       Serial: 37370930, Slot: 1, Name: diego-yk-30
-#    Recipient: age1yubikey1qwaxvn3v0r4jvt7dx54wc524thdxp35a2zf9xexjagnhj5wyvlepjrlfar9
-AGE-PLUGIN-YUBIKEY-1XG7R5Q5ZHX2694SSEC9PC
+#    Recipient: age1yubikey1qty3s6f6kgy95gydazgnluhztr6l5umaup0pxxkeg02p6xjnsa2wkk93san
+AGE-PLUGIN-YUBIKEY-1XG7R5Q5Z57KT39SGW5JE7
 
 #       Serial: 37370931, Slot: 1, Name: diego-yk-31
-#    Recipient: age1yubikey1qtmg7ux22wsxlc7h8zta5cqwxmttqyn9edwkdjfgrmhnjgfu576ww7p0w20
-AGE-PLUGIN-YUBIKEY-1XV7R5Q5ZTW4AXCGGMQXCF
+#    Recipient: age1yubikey1qddesalm8sn87c372z7guv37rprg7j5pnlldhk6helc7phhvwurmzq4mrsm
+AGE-PLUGIN-YUBIKEY-1XV7R5Q5ZSLEAU0CVKLKWJ
