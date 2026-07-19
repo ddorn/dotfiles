@@ -1,6 +1,5 @@
-# Backup config for *this machine* (pando). One file per machine — the configs for the
-# other machines live in other-machines/ for reference only; they are deployed from
-# prog/infra/deploy, not by chezmoi.
+# Backup config for *this machine* (pando). One file per machine; abuelo's and brimmon's
+# live in prog/infra/deploy/files/ and are deployed from there by pyinfra.
 
 directories:
   - /home/diego
