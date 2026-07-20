@@ -800,12 +800,7 @@ binds {
     Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
     // The quit action will show a confirmation dialog to avoid accidental exits.
-    // Diego: on personal-laptop Mod+Shift+E is the emoji picker (see below), so
-    // quit lives only on Ctrl+Alt+Delete there.
-{{ if ne .role "personal-laptop" -}}
     Mod+Shift+E { quit; }
-{{ end -}}
-    Ctrl+Alt+Delete { quit; }
 
     // Powers off the monitors. To turn them back on, do any input like
     // moving the mouse or pressing any other key.
@@ -831,7 +826,7 @@ binds {
     Mod+Alt+4 { spawn-sh "niri msg output \"$(niri msg --json focused-output | jq -r .name)\" scale 2"; }
 {{ if eq .role "personal-laptop" -}}
     Mod+Shift+B { spawn-sh "pkill -USR1 waybar"; }                  // toggle waybar
-    Mod+Shift+E { spawn-sh "$HOME/.config/sway/emoji-picker.sh"; }  // emoji picker
+    Mod+E { spawn-sh "$HOME/.config/sway/emoji-picker.sh"; }  // emoji picker
     XF86AudioMedia { spawn-sh "alacritty --class speech2text --command uv run --project=prog/scripts prog/scripts/scripts/2text"; }
     Shift+XF86AudioMedia { spawn "/home/diego/prog/launcher-neutralinojs/dist/launcher-neutralinojs/launcher-neutralinojs-linux_x64"; }
     Mod+Shift+Ctrl+V { spawn-sh "pkill copyq || copyq"; }           // restart copyq

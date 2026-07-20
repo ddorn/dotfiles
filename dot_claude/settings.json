@@ -18,6 +18,7 @@
     ],
     "defaultMode": "default"
   },
+  "model": "opus",
   "hooks": {
     "Stop": [
       {
@@ -51,6 +52,8 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
+  "tui": "fullscreen",
   "editorMode": "vim",
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "agentPushNotifEnabled": false
 }
