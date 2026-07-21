@@ -86,7 +86,8 @@ python .chezmoiscripts/run_onchange_before_refresh-secrets.py
 
 ## Non-obvious things
 
-- **A compositor auto-launches** from `.zshrc` (via `dot_config/shell/common.sh.tmpl`) when on tty1 and role is laptop. It auto-launches whichever of niri/sway is installed, or prompts (5s, default niri) when both are. Don't add terminal emulator startup logic elsewhere.
+- **niri auto-launches** from `.zshrc` (via `dot_config/shell/common.sh.tmpl`) when on tty1 and role is laptop. There is no compositor chooser: sway is only reachable by running the `start-sway` shell function from a bare tty. Don't add terminal emulator startup logic elsewhere.
+- **`dot_config/niri/config.kdl` is not templated.** niri is personal-laptop-only; the work-laptop branches were dropped. Keep it plain KDL rather than reintroducing `.tmpl`.
 - **niri must be started via `niri-session`, never bare `niri`.** Only `niri-session` sets `XDG_CURRENT_DESKTOP=niri` and pushes it into the systemd/dbus activation environment. Bare `niri` inherits a stale value (sway doesn't clear its own on exit), which makes `xdg-desktop-portal` load the wrong backend config and silently breaks file dialogs.
 - **Sway leaks env markers.** `SWAYSOCK`/`I3SOCK` survive a sway session, and tools gate on them (e.g. oh-my-zsh's `bgnotify` shells out to `swaymsg` every prompt). niri's config unsets them for everything it spawns; the tty1 chooser also clears them (and clears `NIRI_SOCKET` when choosing sway).
 - **Electron apps need three different Wayland mechanisms.** System-electron apps (Obsidian) read `~/.config/electron-flags.conf`; Marvin honours the `ELECTRON_OZONE_PLATFORM_HINT` env var set in niri's `environment` block; Beeper's older bundled Electron ignores both and needs an explicit `--ozone-platform=wayland` flag (hence the local `.desktop` override). `--ozone-platform-hint=auto` does *not* reliably pick Wayland.

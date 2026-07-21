@@ -135,7 +135,6 @@ environment {
 }
 
 // --- Diego's outputs (ported from sway) ---
-{{ if eq .role "personal-laptop" -}}
 // Framework laptop at the origin; the Samsung LS24A600U specifically sits ABOVE
 // it. Any other external is auto-placed to the right by niri (eDP-1 at scale
 // 1.25 is ~1804 logical px wide, matching the old sway `output * pos 1804 0`).
@@ -146,11 +145,6 @@ output "eDP-1" {
 output "Samsung Electric Company LS24A600U H4ZT700007" {
     position x=0 y=-1440
 }
-{{ else if eq .role "work-laptop" -}}
-// Big monitor (DP-2) on the left, small (DP-1) on the right.
-output "DP-1" { position x=1920 y=0; }
-output "DP-2" { position x=0 y=0; }
-{{ end -}}
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -329,7 +323,6 @@ workspace "chat"
 // niri, run as a session, imports its own environment into systemd/dbus, so
 // sway's `systemctl --user import-environment` dance isn't needed.
 // niri has no built-in wallpaper, so swaybg draws it (compositor-agnostic).
-{{ if eq .role "personal-laptop" -}}
 spawn-at-startup "swaybg" "-i" "/home/diego/background.png" "-m" "fill" "-c" "F7ECD6"
 
 // idle management (sway: swayidle -w timeout 300 lock / 1200 hibernate)
@@ -355,18 +348,6 @@ spawn-at-startup "pucoti2"
 spawn-at-startup "swaync"
 spawn-at-startup "batsignal" "-b" "-w" "20" "-c" "10" "-d" "5" "-D" "swaylock -i /home/diego/.config/sway/no-more-battery.png"
 spawn-at-startup "gammastep"
-{{ else if eq .role "work-laptop" -}}
-spawn-at-startup "swaybg" "-c" "000000"
-
-spawn-sh-at-startup "flatpak run md.obsidian.Obsidian"
-spawn-at-startup "firefox-esr"
-spawn-sh-at-startup "flatpak run com.github.IsmaelMartinez.teams_for_linux"
-
-// Lock screen at 17:30 with orange background
-spawn-sh-at-startup "while true; do now=$(date +%s); target=$(date -d 'today 17:30' +%s); [ \"$now\" -ge \"$target\" ] && target=$(date -d 'tomorrow 17:30' +%s); sleep $((target - now)); swaylock -f -c FFA500; done"
-// Meditation prompt: lock with green every ~4h on average
-spawn-sh-at-startup "while true; do sleep 300; awk 'BEGIN{srand(); exit (rand() < 1/48) ? 0 : 1}' && swaylock -f -c 00AA00; done"
-{{ end -}}
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
@@ -476,7 +457,6 @@ window-rule {
     match title="Beeper"  // beeper's app-id is unreliable; sway matched by title
     open-on-workspace "chat"
 }
-{{ if eq .role "personal-laptop" -}}
 window-rule {
     match app-id="^emojipicker$"
     open-floating true
@@ -502,7 +482,6 @@ window-rule {
     match title="^Pucoti$"
     open-floating true
 }
-{{ end -}}
 
 binds {
     // Keys consist of modifiers separated by + signs, followed by an XKB key name
@@ -521,15 +500,9 @@ binds {
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
     // Diego: terminal moved to Mod+Return; launcher is sway-launcher-desktop.
-{{ if eq .role "personal-laptop" -}}
     Mod+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
     Mod+T { spawn "pucoti2"; }  // sway muscle memory: Mod+T = pucoti timer
     Mod+D hotkey-overlay-title="Launcher: sway-launcher-desktop" { spawn-sh "alacritty --class=launcher -e env FZF_DEFAULT_OPTS='--layout=reverse' sway-launcher-desktop"; }
-{{ else if eq .role "work-laptop" -}}
-    Mod+Return hotkey-overlay-title="Open a Terminal: foot" { spawn "foot" "-e" ".local/bin/zsh"; }
-    Mod+T hotkey-overlay-title="Open a Terminal: foot" { spawn "foot" "-e" ".local/bin/zsh"; }
-    Mod+D hotkey-overlay-title="Launcher" { spawn-sh "[ -x $HOME/.local/bin/sway-launcher-desktop.sh ] && foot --app-id=launcher -e env FZF_COMMAND=$HOME/.local/bin/fzf FZF_DEFAULT_OPTS=--layout=reverse $HOME/.local/bin/sway-launcher-desktop.sh || dmenu_run"; }
-{{ end -}}
     Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
@@ -760,11 +733,7 @@ binds {
 
     // Move the focused window between the floating and the tiling layout.
     Mod+V       { toggle-window-floating; }
-{{ if eq .role "personal-laptop" -}}
     Mod+Shift+V { spawn-sh "copyq toggle"; }  // Diego (was: switch-focus-between-floating-and-tiling)
-{{ else -}}
-    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
-{{ end -}}
 
     // Toggle tabbed column display mode.
     // Windows in this column will appear as vertical tabs,
@@ -824,7 +793,6 @@ binds {
     Mod+Alt+2 { spawn-sh "niri msg output \"$(niri msg --json focused-output | jq -r .name)\" scale 1.25"; }
     Mod+Alt+3 { spawn-sh "niri msg output \"$(niri msg --json focused-output | jq -r .name)\" scale 1.5"; }
     Mod+Alt+4 { spawn-sh "niri msg output \"$(niri msg --json focused-output | jq -r .name)\" scale 2"; }
-{{ if eq .role "personal-laptop" -}}
     Mod+Shift+B { spawn-sh "pkill -USR1 waybar"; }                  // toggle waybar
     Mod+E { spawn-sh "$HOME/.config/sway/emoji-picker.sh"; }  // emoji picker
     XF86AudioMedia { spawn-sh "alacritty --class speech2text --command uv run --project=prog/scripts prog/scripts/scripts/2text"; }
@@ -834,5 +802,4 @@ binds {
     Mod+Shift+Print { spawn-sh "obs-cli recording toggle"; }
     Mod+Shift+A { spawn "anki"; }
     Mod+Shift+Return { spawn-sh "swaync-client -t -sw"; }           // toggle notif panel
-{{ end -}}
 }

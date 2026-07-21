@@ -41,6 +41,16 @@ md() { mkdir -p "$1" && cd "$1"; }
 compress-mp4() { ffmpeg -i "$1" -vcodec libx265 -crf 28 "compressed-$1"; }
 
 {{- if hasSuffix "laptop" .role }}
+start-sway() {
+    # tty1 auto-starts niri (see STARTUP below). This is the manual escape hatch
+    # for sway: run it from a bare tty (not from inside a running compositor).
+    # The niri marker must go, or tools that gate on $NIRI_SOCKET misbehave.
+    unset NIRI_SOCKET
+    systemctl --user unset-environment NIRI_SOCKET 2>/dev/null
+    export XDG_CURRENT_DESKTOP=sway XDG_SESSION_DESKTOP=sway
+    exec sway
+}
+
 mirror() {
     # Mirror the focused output onto the other one. Works under both niri and
     # sway, detected via their respective IPC socket env vars.
@@ -103,41 +113,19 @@ if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
     export QT_SCREEN_SCALE_FACTORS="0.66666;1"
     export ELECTRON_OZONE_PLATFORM_HINT=wayland
 
-    # Pick a compositor: auto-launch the only one installed, else prompt (5s,
-    # default niri). niri MUST go through niri-session so it sets up the session
-    # environment (XDG_CURRENT_DESKTOP, dbus/systemd activation env) — launching
-    # bare `niri` leaves stale env and breaks portals (file pickers etc.).
-    if command -v niri-session >/dev/null && command -v sway >/dev/null; then
-        printf 'Compositor?  [niri] / sway  (5s): '
-        read -t 5 _wm || true
-        echo
-    elif command -v niri-session >/dev/null; then
-        _wm=niri
-    elif command -v sway >/dev/null; then
-        _wm=sway
-    else
-        _wm=none
+    # niri MUST go through niri-session so it sets up the session environment
+    # (XDG_CURRENT_DESKTOP, dbus/systemd activation env) — launching bare `niri`
+    # leaves stale env and breaks portals (file pickers etc.).
+    # sway is no longer offered here — run `start-sway` from a tty for that.
+    if command -v niri-session >/dev/null; then
+        # Drop any stale sway markers: sway doesn't clean these up on exit,
+        # and a leftover SWAYSOCK makes e.g. oh-my-zsh's bgnotify plugin run
+        # `swaymsg` on every prompt.
+        unset SWAYSOCK I3SOCK
+        systemctl --user unset-environment SWAYSOCK I3SOCK 2>/dev/null
+        export XDG_CURRENT_DESKTOP=niri XDG_SESSION_DESKTOP=niri
+        exec niri-session
     fi
-
-    case "${_wm:-niri}" in
-        none) ;;  # neither installed — fall through to the shell
-        s*|S*)
-            # Drop any stale niri marker so tools don't think niri is running.
-            unset NIRI_SOCKET
-            systemctl --user unset-environment NIRI_SOCKET 2>/dev/null
-            export XDG_CURRENT_DESKTOP=sway XDG_SESSION_DESKTOP=sway
-            exec sway
-            ;;
-        *)
-            # Drop any stale sway markers: sway doesn't clean these up on exit,
-            # and a leftover SWAYSOCK makes e.g. oh-my-zsh's bgnotify plugin run
-            # `swaymsg` on every prompt.
-            unset SWAYSOCK I3SOCK
-            systemctl --user unset-environment SWAYSOCK I3SOCK 2>/dev/null
-            export XDG_CURRENT_DESKTOP=niri XDG_SESSION_DESKTOP=niri
-            exec niri-session
-            ;;
-    esac
 fi
 {{- end }}
 
