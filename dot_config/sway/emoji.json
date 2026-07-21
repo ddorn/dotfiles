@@ -1402,7 +1402,7 @@
 		{"emoji": "🗝", "name": "old key", "shortname": ":old_key:", "unicode": "1F5DD", "html": "&#128477;", "category": "Objects (lock)", "order": ""},
 		{"emoji": "🗜", "name": "clamp", "shortname": ":compression:", "unicode": "1f5dc", "html": "&#128476;", "category": "Objects (tool)", "order": "1962"},
 		{"emoji": "🗒", "name": "spiral notepad", "shortname": ":spiral_notepad:", "unicode": "1F5D2", "html": "&#128466;", "category": "Objects (office)", "order": ""},
-		{"emoji": "🗑", "name": "wastebasket", "shortname": ":wastebasket:", "unicode": "1f5d1", "html": "&#128465;", "category": "Objects (office)", "order": "1943"},
+		{"emoji": "🗑", "name": "wastebasket, trash can, bin", "shortname": ":wastebasket:", "unicode": "1f5d1", "html": "&#128465;", "category": "Objects (office)", "order": "1943"},
 		{"emoji": "🗄", "name": "file cabinet", "shortname": ":file_cabinet:", "unicode": "1f5c4", "html": "&#128452;", "category": "Objects (office)", "order": "1942"},
 		{"emoji": "🗃", "name": "card file box", "shortname": ":card_file_box:", "unicode": "1F5C3", "html": "&#128451;", "category": "Objects (office)", "order": ""},
 		{"emoji": "🗂", "name": "card index dividers", "shortname": ":card_index_dividers:", "unicode": "1F5C2", "html": "&#128450;", "category": "Objects (office)", "order": ""},
