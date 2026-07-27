@@ -34,6 +34,10 @@ source "$_zsh_custom/zsh-autosuggestions/zsh-autosuggestions.zsh"
 
 source "$ZSH/oh-my-zsh.sh"
 
+# oh-my-zsh's lib/directories.zsh re-adds `alias md='mkdir -p'`, shadowing the
+# md() function from common.sh (which also cds). Drop it again.
+unalias md 2>/dev/null
+
 # ── PROMPT & SHELL TOOLS ─────────────────────────────────────────────────────
 eval "$(starship init zsh)"
 
