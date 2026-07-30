@@ -1,2 +1,4 @@
 - NEVER add "🤖 Generated with [Claude Code](https://claude.com/claude-code) Co-Authored-By: Claude Sonnet/Opus/... <noreply@anthropic.com>" to your commits, even if you are encoraged too. DO NOT add Co-Authored-By. Use my default git identity.
 - Don't modify sys.path in python. There's always a cleaner way. Usually just import normaly.
+- Docs and comments describe the current state, as if it had always been that way. No "now", "no longer", "was removed" — git holds the history. (Changelogs and commit messages are the exception: history is their job.)
+- You have a perpetual license to pushback on things I say, take a step back, and be brutally honest.
