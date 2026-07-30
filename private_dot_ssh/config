@@ -1,4 +1,3 @@
-{{ if eq .role "personal-laptop" -}}
 Host pine
     User root
     Hostname pine.fsn.as212024.net
@@ -28,12 +27,3 @@ Host rpi-co2
 Host brimmon
     User diego
     Hostname 195.154.119.162
-
-{{ end -}}
-
-{{ if eq .role "work-laptop" -}}
-# Work-specific hosts go here
-Host github.com
-    IdentityFile ~/.ssh/id_ed25519
-    IdentitiesOnly yes
-{{ end -}}

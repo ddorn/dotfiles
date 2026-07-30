@@ -40,7 +40,6 @@ md() { mkdir -p "$1" && cd "$1"; }
 
 compress-mp4() { ffmpeg -i "$1" -vcodec libx265 -crf 28 "compressed-$1"; }
 
-{{- if hasSuffix "laptop" .role }}
 start-sway() {
     # tty1 auto-starts niri (see STARTUP below). This is the manual escape hatch
     # for sway: run it from a bare tty (not from inside a running compositor).
@@ -78,7 +77,6 @@ mirror() {
         echo "mirror: no niri (\$NIRI_SOCKET) or sway (\$SWAYSOCK) session detected"; return 1
     fi
 }
-{{- end }}
 
 # ── ALIASES ──────────────────────────────────────────────────────────────────
 alias day='date +%Y-%m-%d'
@@ -91,19 +89,12 @@ alias tree='tree --gitignore'
 alias grep='grep --color=auto --exclude-dir={.bzr,CVS,.git,.hg,.svn,.idea,.tox,.venv}'
 alias ephemeral='~/prog/all/ephemeral/ephemeral | grep -v "already a symlink"'
 alias receipe="python -c \"import random as r; print('Receipe p.' + str(r.choice(list(range(15, 150)) + list(range(172, 204)))))\""
-{{- if eq .chezmoi.hostname "hyperion" }}
-alias backuplist='du -X ~/restic_exclude ~ /etc/nginx -h -t 1M | sort -h'
-{{- else }}
 alias backuplist='du -X ~/.config/restic/exclude ~ -h -t 1M | sort -h'
-{{- end }}
-{{- if hasSuffix "laptop" .role }}
 alias scale='swaymsg output "*" scale'
 alias qwerty="swaymsg input '*' xkb_layout fr"
 alias azerty="swaymsg input '*' xkb_layout us"
-{{- end }}
 
 # ── STARTUP ──────────────────────────────────────────────────────────────────
-{{- if hasSuffix "laptop" .role }}
 if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
     # Shared Wayland environment (compositor-agnostic).
     export SDL_VIDEODRIVER=wayland
@@ -127,9 +118,7 @@ if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
         exec niri-session
     fi
 fi
-{{- end }}
 
-{{- if ne .role "work-laptop" }}
 # Run backup if not snoozed and not inside a Cursor agent
 _backup_snooze=~/.cache/backups/dont_ask_for_backup_until
 if [[ -f $_backup_snooze ]] && (( $(date -d "$(cat $_backup_snooze)" +%s) > $(date +%s) )); then
@@ -137,7 +126,6 @@ if [[ -f $_backup_snooze ]] && (( $(date -d "$(cat $_backup_snooze)" +%s) > $(da
 elif [[ "$CURSOR_AGENT" != "1" && -z "$SKIP_DD_BACKUP" ]]; then
     ~/.local/bin/backup.py backup --if-needed
 fi
-{{- end }}
 
 # Warn if /home is low on disk space
 _free_space=$(df -m "$HOME" | awk 'NR==2 {print $4}')

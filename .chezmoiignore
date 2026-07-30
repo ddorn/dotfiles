@@ -1,0 +1,7 @@
+CLAUDE.md
+scripts
+.oh-my-zsh/cache/completions
+.oh-my-zsh/cache/grep-alias
+
+# Python bytecode caches, anywhere
+**/__pycache__

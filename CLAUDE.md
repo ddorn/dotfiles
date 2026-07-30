@@ -4,12 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A [chezmoi](https://chezmoi.io)-managed dotfiles repository for Diego, targeting 3 machine roles:
-- **personal-laptop** — primary dev environment, alacritty terminal, full pacman access
-- **work-laptop** — no admin rights, so GUI tools and CLI tools unavailable in system packages are installed in userspace via chezmoi; uses foot terminal (alacritty not installable)
-- **server** — minimal, no GUI; role exists but is not yet deployed on actual servers (pando = laptop, abuelo = home server)
+A [chezmoi](https://chezmoi.io)-managed dotfiles repository for Diego, targeting one machine: the personal Arch laptop (pando) — alacritty terminal, full pacman access, niri as the compositor with sway as a fallback.
 
-The role is selected once at `chezmoi init` time via `promptStringOnce` in `.chezmoi.toml.tmpl` and stored in chezmoi's local config (not in this repo). It drives all machine-specific templating.
+Configs are written for that machine directly: there is no machine-role or per-host mechanism, and no `.chezmoi.toml.tmpl`.
 
 ## Chezmoi file naming conventions
 
@@ -24,7 +21,7 @@ The role is selected once at `chezmoi init` time via `promptStringOnce` in `.che
 
 Three mechanisms, not a traditional package manager list:
 
-1. **`.chezmoiexternal.toml`** — downloads archives/files directly into userspace. Used for: oh-my-zsh + plugins (weekly), `bw` (Bitwarden CLI, always). On work-laptop, also manages ranger, bat, and sway-launcher-desktop — because those can't be installed via pacman (no admin rights). The `gitHubLatestRelease` helper is used for bat's dynamic URL.
+1. **`.chezmoiexternal.toml`** — downloads archives/files directly into userspace. Used for: oh-my-zsh + plugins, `bw` (Bitwarden CLI), and the Lilex font. GitHub sources go through `scripts/gh-delayed-commit.py` / `scripts/gh-delayed-release.py`, which pin to content at least 2 weeks old.
 
 2. **`.chezmoiscripts/run_onchange_install-tools.sh`** — interactive script that prompts before installing: starship, direnv, fzf, Claude Code CLI. Runs when the script content changes.
 
@@ -43,15 +40,7 @@ Secrets stored in Bitwarden: wandb API key, overleaf-git password, wakatime API 
 
 ## Templates
 
-Role-based conditionals throughout:
-```
-{{ if eq .role "personal-laptop" -}}
-{{ else if eq .role "work-laptop" -}}
-{{ else if hasSuffix "laptop" .role -}}  # matches both laptops
-{{ end }}
-```
-
-Key templated files: `.zshrc`, sway config and niri config (terminal selection, outputs, per-role autostart), SSH config (personal-laptop only), rclone config, netrc, git-credentials, wakatime config.
+Templating is used only for secret injection and a couple of computed values. The `.tmpl` files are rclone config, netrc, git-credentials and wakatime config (all `{{ .secrets.* }}`), `.chezmoiexternal.toml` (the delayed-pin helpers), and the systemd-reload script (unit hash). Everything else — `.zshrc`, `common.sh`, the sway and niri configs, SSH config — is a plain file.
 
 ## The backup system
 
@@ -86,11 +75,8 @@ python .chezmoiscripts/run_onchange_before_refresh-secrets.py
 
 ## Non-obvious things
 
-- **niri auto-launches** from `.zshrc` (via `dot_config/shell/common.sh.tmpl`) when on tty1 and role is laptop. There is no compositor chooser: sway is only reachable by running the `start-sway` shell function from a bare tty. Don't add terminal emulator startup logic elsewhere.
-- **`dot_config/niri/config.kdl` is not templated.** niri is personal-laptop-only; the work-laptop branches were dropped. Keep it plain KDL rather than reintroducing `.tmpl`.
+- **niri auto-launches** from `.zshrc` (via `dot_config/shell/common.sh`) when on tty1. There is no compositor chooser: sway is only reachable by running the `start-sway` shell function from a bare tty. Don't add terminal emulator startup logic elsewhere.
 - **niri must be started via `niri-session`, never bare `niri`.** Only `niri-session` sets `XDG_CURRENT_DESKTOP=niri` and pushes it into the systemd/dbus activation environment. Bare `niri` inherits a stale value (sway doesn't clear its own on exit), which makes `xdg-desktop-portal` load the wrong backend config and silently breaks file dialogs.
 - **Sway leaks env markers.** `SWAYSOCK`/`I3SOCK` survive a sway session, and tools gate on them (e.g. oh-my-zsh's `bgnotify` shells out to `swaymsg` every prompt). niri's config unsets them for everything it spawns; the tty1 chooser also clears them (and clears `NIRI_SOCKET` when choosing sway).
 - **Electron apps need three different Wayland mechanisms.** System-electron apps (Obsidian) read `~/.config/electron-flags.conf`; Marvin honours the `ELECTRON_OZONE_PLATFORM_HINT` env var set in niri's `environment` block; Beeper's older bundled Electron ignores both and needs an explicit `--ozone-platform=wayland` flag (hence the local `.desktop` override). `--ozone-platform-hint=auto` does *not* reliably pick Wayland.
-- **ranger and bat are on both machines**, but installed differently. On personal-laptop they come from pacman. On work-laptop (no admin rights), chezmoi downloads them into userspace via `.chezmoiexternal.toml`. The `.chezmoiignore.tmpl` excludes `~/.local/bin/ranger` on personal-laptop because that path is only needed for the tarball-based install.
-- **The core work-laptop pattern**: if a tool can't be installed via pacman due to no admin rights, it goes into `.chezmoiexternal.toml` as a file/archive download to `~/.local/bin`.
 - **`.chezmoidata.toml` in root** looks like config but is a runtime-generated secrets cache. Do not add permanent config there.

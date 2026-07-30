@@ -13,30 +13,15 @@ set $right l
 set $scripts /home/diego/.config/sway
 
 # Your preferred terminal emulator
-{{ if eq .role "personal-laptop" -}}
 set $term alacritty
-{{ else if eq .role "work-laptop" -}}
-set $term foot -e .local/bin/zsh
-{{ end }}
+
 # Your preferred application launcher
-{{ if eq .role "personal-laptop" -}}
 for_window [app_id="^launcher$"] floating enable, sticky enable, resize set 30 ppt 60 ppt, border pixel 10
 set $menu exec $term --class=launcher -e env FZF_DEFAULT_OPTS="--layout=reverse" sway-launcher-desktop
-{{ else if eq .role "work-laptop" -}}
-for_window [app_id="^launcher$"] floating enable, sticky enable, resize set 30 ppt 60 ppt, border pixel 10
-set $menu exec sh -c '[ -x $HOME/.local/bin/sway-launcher-desktop.sh ] && foot --app-id=launcher -e env FZF_COMMAND=$HOME/.local/bin/fzf FZF_DEFAULT_OPTS=--layout=reverse $HOME/.local/bin/sway-launcher-desktop.sh || dmenu_run'
-{{ end }}
 
-##############################################################################
-# MACHINE-INDEPENDENT
-##############################################################################
 
 ### Output configuration
-{{ if eq .role "personal-laptop" -}}
 output * bg /home/diego/background.png fill #F7ECD6
-{{ else -}}
-output * bg #000000 solid_color
-{{ end -}}
 
 ### Input configuration
 input * {
@@ -226,27 +211,11 @@ bindsym $mod+r mode "resize"
 
 ### Status Bar
 # Read `man 5 sway-bar` for more information about this section.
-{{ if eq .role "personal-laptop" -}}
 bar {
     swaybar_command waybar
 }
 # Toggle waybar
 bindsym $mod+Shift+b exec pkill -USR1 waybar
-{{ else if eq .role "work-laptop" -}}
-bar {
-    position top
-
-    # When the status_command prints a new line to stdout, swaybar updates.
-    # The default just shows the current date and time.
-    status_command while date +'%Y-%m-%d %X'; do sleep 1; done
-
-    colors {
-        statusline #ffffff
-        background #323232
-        inactive_workspace #32323200 #32323200 #5c5c5c
-    }
-}
-{{ end -}}
 
 ### Visual
 default_border pixel 3
@@ -283,10 +252,6 @@ assign [app_id="rambox"] workspace $chat_workspace
 for_window [app_id="Slack"] move container to workspace $chat_workspace
 
 
-##############################################################################
-# PERSONAL LAPTOP
-##############################################################################
-{{ if eq .role "personal-laptop" }}
 # Scale Framework display
 output eDP-1 scale 1.25
 
@@ -364,26 +329,6 @@ exec batsignal -b -w 20 -c 10 -d 5 -D "swaylock -i /home/diego/.config/sway/no-m
 
 # Night color filter
 exec gammastep
-{{ end -}}
 
-##############################################################################
-# WORK LAPTOP
-##############################################################################
-{{ if eq .role "work-laptop" }}
-# Display layout: big monitor (DP-2) on the left, small (DP-1) on the right
-output DP-1 pos 0 0
-output DP-2 pos 1920 0
-# output DP-2 pos 2560 0
-
-exec flatpak run md.obsidian.Obsidian
-exec firefox-esr
-exec flatpak run com.github.IsmaelMartinez.teams_for_linux
-
-# Lock screen at 17:30 with orange background
-exec sh -c 'while true; do now=$(date +%s); target=$(date -d "today 17:30" +%s); [ "$now" -ge "$target" ] && target=$(date -d "tomorrow 17:30" +%s); sleep $((target - now)); swaylock -f -c FFA500; done'
-
-# Meditation prompt: lock with green every ~4h on average (1/48 chance every 5 min)
-exec sh -c 'while true; do sleep 300; awk "BEGIN{srand(); exit (rand() < 1/48) ? 0 : 1}" && swaylock -f -c 00AA00; done'
-{{ end -}}
 
 include /etc/sway/config.d/*

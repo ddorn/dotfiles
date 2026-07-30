@@ -22,9 +22,7 @@ plugins=(
     history-substring-search
     fzf
 )
-{{- if hasSuffix "laptop" .role }}
 plugins+=(bgnotify)       # desktop notification when long job finishes (>${bgnotify_threshold}s)
-{{- end }}
 
 # Source community plugins before oh-my-zsh.
 # These are managed by chezmoi via .chezmoiexternal.toml → ~/.oh-my-zsh/custom/plugins/
