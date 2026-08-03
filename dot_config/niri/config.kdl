@@ -153,6 +153,12 @@ layout {
     // Set gaps around windows in logical pixels.
     gaps 8
 
+    // Each workspace paints its own background over the backdrop, which would
+    // hide noctalia's wallpaper everywhere except the overview — see the
+    // layer-rule for ^noctalia-wallpaper further down, which is what puts the
+    // wallpaper in the backdrop in the first place. The two go together.
+    background-color "transparent"
+
     // When to center a column when changing focus, options are:
     // - "never", default behavior, focusing an off-screen column will keep at the left
     //   or right edge of the screen.
@@ -487,10 +493,12 @@ window-rule {
 }
 
 // Noctalia draws the wallpaper on its own layer-shell surface, one per output.
-// place-within-backdrop puts it behind the windows rather than over the
-// workspace backdrop, so it stays visible in the overview and between
-// workspaces. Everything else noctalia puts on a layer — bar, panels, OSDs —
-// keeps niri's defaults.
+// place-within-backdrop moves it into niri's backdrop, so it sits still while
+// workspaces scroll over it and stays visible in the overview and between
+// workspaces. This only works paired with `background-color "transparent"` in
+// the layout block above: otherwise each workspace paints over the backdrop and
+// the wallpaper shows in the overview only. Everything else noctalia puts on a
+// layer — bar, panels, OSDs — keeps niri's defaults.
 layer-rule {
     match namespace="^noctalia-wallpaper"
     place-within-backdrop true
