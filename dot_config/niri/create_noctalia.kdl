@@ -1,0 +1,21 @@
+// Colours for niri, owned by noctalia: its "niri" template rewrites this whole
+// file on every theme change. config.kdl includes it, and niri treats a missing
+// include as a fatal config error — so chezmoi seeds this fallback (create_,
+// i.e. written only when absent) to keep the config valid before noctalia has
+// ever applied a theme. Once it has, everything below is replaced.
+//
+// The values are the pre-noctalia ones: the sway accent blue, and the amber
+// border.
+layout {
+    focus-ring {
+        active-color   "#5ad4e6"
+        inactive-color "#505050"
+        urgent-color   "#9b0000"
+    }
+
+    border {
+        active-color   "#ffc87f"
+        inactive-color "#505050"
+        urgent-color   "#9b0000"
+    }
+}

@@ -1,0 +1,34 @@
+{
+  "settingsVersion": 59,
+  "appLauncher": {
+    "enableClipboardHistory": true,
+    "terminalCommand": "alacritty -e"
+  },
+  "colorSchemes": {
+    "predefinedScheme": "Ayu",
+    "darkMode": true
+  },
+  "dock": {
+    "enabled": false
+  },
+  "general": {
+    "showChangelogOnStartup": false
+  },
+  "idle": {
+    "enabled": false
+  },
+  "nightLight": {
+    "enabled": true
+  },
+  "templates": {
+    "activeTemplates": [
+      { "id": "alacritty", "enabled": true },
+      { "id": "niri", "enabled": true }
+    ]
+  },
+  "wallpaper": {
+    "directory": "/home/diego/Pictures/Wallpapers",
+    "fillMode": "crop",
+    "fillColor": "#F7ECD6"
+  }
+}

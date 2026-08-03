@@ -201,19 +201,9 @@ layout {
         // How many logical pixels the ring extends out from the windows.
         width 4
 
-        // Colors can be set in a variety of ways:
-        // - CSS named colors: "red"
-        // - RGB hex: "#rgb", "#rgba", "#rrggbb", "#rrggbbaa"
-        // - CSS-like notation: "rgb(255, 127, 0)", rgba(), hsl() and a few others.
-
-        // Color of the ring on the active monitor.
-        active-color "#5ad4e6"  // Diego (sway accent $blue)
-
-        // Color of the ring on inactive monitors.
-        //
-        // The focus ring only draws around the active window, so the only place
-        // where you can see its inactive-color is on other monitors.
-        inactive-color "#505050"
+        // active-color, inactive-color and urgent-color come from noctalia.kdl,
+        // included further down. Setting them here instead would win, since niri
+        // takes the last definition it reads.
 
         // You can also use gradients. They take precedence over solid colors.
         // Gradients are rendered the same as CSS linear-gradient(angle, from, to).
@@ -238,11 +228,7 @@ layout {
         off
 
         width 4
-        active-color "#ffc87f"
-        inactive-color "#505050"
-
-        // Color of the border around windows that request your attention.
-        urgent-color "#9b0000"
+        // Colors come from noctalia.kdl, as for the focus ring above.
 
         // Gradients can use a few different interpolation color spaces.
         // For example, this is a pastel rainbow gradient via in="oklch longer hue".
@@ -307,8 +293,21 @@ layout {
 // which may be more convenient to use.
 // See the binds section below for more spawn examples.
 
-// This line starts waybar, a commonly used bar for Wayland compositors.
-spawn-at-startup "waybar"
+// Noctalia is the shell layer: bar, launcher, clipboard, notifications,
+// wallpaper, OSDs, night light, tray. It is a Quickshell config rather than a
+// program of its own, hence the `qs -c`. Settings live in
+// ~/.config/noctalia/settings.json — see the note above the binds below.
+spawn-at-startup "qs" "-c" "noctalia-shell"
+
+// Noctalia has no polkit agent, and nothing else in this session offers an
+// authentication prompt, so GUI privilege escalation needs one spawned here.
+spawn-at-startup "/usr/lib/polkit-kde-authentication-agent-1"
+
+// Focus ring, border, shadow, tab-indicator and insert-hint colours, generated
+// from the active noctalia palette. Untracked — noctalia rewrites it on every
+// theme change. niri takes whichever definition it reads last, so the layout
+// block above deliberately sets no colours and lets this file own them.
+include "noctalia.kdl"
 
 // Diego: persistent "home" workspaces (sway had fixed numbered workspaces).
 // Named workspaces always exist and sit at the TOP of the stack in declaration
@@ -322,10 +321,12 @@ workspace "chat"
 // --- Diego's autostart (ported from sway `exec`) ---
 // niri, run as a session, imports its own environment into systemd/dbus, so
 // sway's `systemctl --user import-environment` dance isn't needed.
-// niri has no built-in wallpaper, so swaybg draws it (compositor-agnostic).
-spawn-at-startup "swaybg" "-i" "/home/diego/background.png" "-m" "fill" "-c" "F7ECD6"
-
-// idle management (sway: swayidle -w timeout 300 lock / 1200 hibernate)
+// Idle and lock stay with swayidle/swaylock rather than moving to noctalia's
+// built-in idle service (which is off in settings.json). noctalia's lock screen
+// always draws the desktop wallpaper as its background, and focus-helper's whole
+// point is putting a chosen image on the lock screen — so swaylock keeps the job
+// it already does here and in the sway fallback. noctalia therefore never takes
+// niri's ext-session-lock, and there is no locker to conflict with.
 spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f -c 000000' timeout 1200 'systemctl hibernate' before-sleep 'swaylock -f -c 000000'"
 
 // Apps
@@ -343,11 +344,12 @@ spawn-at-startup "iwgtk" "-i"
 spawn-at-startup "blueman-applet"
 spawn-sh-at-startup "syncthingtray-qt6 --wait"
 spawn-at-startup "udiskie" "--tray"
-spawn-at-startup "copyq"
 spawn-at-startup "pucoti2"
-spawn-at-startup "swaync"
-spawn-at-startup "batsignal" "-b" "-w" "20" "-c" "10" "-d" "5" "-D" "swaylock -i /home/diego/.config/sway/no-more-battery.png"
-spawn-at-startup "gammastep"
+// Gone to noctalia: waybar (bar), swaync (notifications), swaybg (wallpaper),
+// gammastep (night light), batsignal (battery warnings) and copyq (clipboard
+// history, now cliphist behind noctalia's launcher). iwgtk, blueman-applet and
+// udiskie stay: noctalia shows network and bluetooth state but has no tray menus
+// for them, and does no removable-drive mounting at all.
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
@@ -474,13 +476,19 @@ window-rule {
     open-floating true
 }
 window-rule {
-    match app-id="com.github.hluk.copyq"
-    open-floating true
-}
-window-rule {
     match title="^PUCOTI$"
     match title="^Pucoti$"
     open-floating true
+}
+
+// Noctalia draws the wallpaper on its own layer-shell surface, one per output.
+// place-within-backdrop puts it behind the windows rather than over the
+// workspace backdrop, so it stays visible in the overview and between
+// workspaces. Everything else noctalia puts on a layer — bar, panels, OSDs —
+// keeps niri's defaults.
+layer-rule {
+    match namespace="^noctalia-wallpaper"
+    place-within-backdrop true
 }
 
 binds {
@@ -499,10 +507,14 @@ binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
-    // Diego: terminal moved to Mod+Return; launcher is sway-launcher-desktop.
+    // Diego: terminal moved to Mod+Return; launcher is noctalia's.
     Mod+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
     Mod+T { spawn "pucoti2"; }  // sway muscle memory: Mod+T = pucoti timer
-    Mod+D hotkey-overlay-title="Launcher: sway-launcher-desktop" { spawn-sh "alacritty --class=launcher -e env FZF_DEFAULT_OPTS='--layout=reverse' sway-launcher-desktop"; }
+    // Noctalia is driven by Quickshell's IPC, so every one of its binds is
+    // `qs -c noctalia-shell ipc call <target> <function>`. `qs -c noctalia-shell
+    // ipc show` lists every target and function, and is the place to check after
+    // an upgrade: an unknown name fails silently.
+    Mod+D hotkey-overlay-title="Launcher: noctalia" { spawn-sh "qs -c noctalia-shell ipc call launcher toggle"; }
     Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
@@ -510,27 +522,27 @@ binds {
     // For example, this is a standard bind to toggle the screen reader (orca).
     Super+Alt+S allow-when-locked=true hotkey-overlay-title=null { spawn-sh "pkill orca || exec orca"; }
 
-    // Example volume keys mappings for PipeWire & WirePlumber.
-    // The allow-when-locked=true property makes them work even when the session is locked.
-    // Using spawn-sh allows to pass multiple arguments together with the command.
-    // "-l 1.0" limits the volume to 100%.
-    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
-    XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
-    XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+    // The allow-when-locked=true property makes these work even when the session
+    // is locked.
+    //
+    // Volume and brightness go through noctalia rather than wpctl/brightnessctl
+    // so that its OSD shows the change. Step sizes are audio.volumeStep and
+    // brightness.brightnessStep in settings.json, not arguments here.
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "qs -c noctalia-shell ipc call volume increase"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "qs -c noctalia-shell ipc call volume decrease"; }
+    XF86AudioMute        allow-when-locked=true { spawn-sh "qs -c noctalia-shell ipc call volume muteOutput"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn-sh "qs -c noctalia-shell ipc call volume muteInput"; }
 
-    // Example media keys mapping using playerctl.
-    // This will work with any MPRIS-enabled media player.
+    // Media keys stay on playerctl. noctalia's media IPC is the same MPRIS calls
+    // behind a shell that has to be running, and shows no OSD for them by
+    // default, so routing through it would buy nothing.
     XF86AudioPlay        allow-when-locked=true { spawn-sh "playerctl play-pause"; }
     XF86AudioStop        allow-when-locked=true { spawn-sh "playerctl stop"; }
     XF86AudioPrev        allow-when-locked=true { spawn-sh "playerctl previous"; }
     XF86AudioNext        allow-when-locked=true { spawn-sh "playerctl next"; }
 
-    // Example brightness key mappings for brightnessctl.
-    // You can use regular spawn with multiple arguments too (to avoid going through "sh"),
-    // but you need to manually put each argument in separate "" quotes.
-    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn-sh "qs -c noctalia-shell ipc call brightness increase"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "qs -c noctalia-shell ipc call brightness decrease"; }
 
     // Open/close the Overview: a zoomed-out view of workspaces and windows.
     // You can also move the mouse into the top-left hot corner,
@@ -733,8 +745,10 @@ binds {
 
     // Move the focused window between the floating and the tiling layout.
     Mod+Space       { toggle-window-floating; }
-    Mod+Shift+Space { switch-focus-between-floating-and-tiling }
-    Mod+V { spawn-sh "copyq toggle"; }
+    Mod+Shift+Space { switch-focus-between-floating-and-tiling; }
+    // Clipboard history: noctalia's launcher in its clipboard mode, over the
+    // cliphist database. Same key as copyq had under sway.
+    Mod+V { spawn-sh "qs -c noctalia-shell ipc call launcher clipboard"; }
 
     // Toggle tabbed column display mode.
     // Windows in this column will appear as vertical tabs,
@@ -783,7 +797,9 @@ binds {
     // =======================================================================
     // Lock, in addition to niri's Super+Alt+L (sway: $mod+Shift+x)
     Mod+Shift+X { spawn "swaylock"; }
-    // Finer brightness steps (niri already binds the 10% ones)
+    // Finer brightness steps. noctalia's brightness IPC has no step argument —
+    // it always moves by brightness.brightnessStep — so these stay on
+    // brightnessctl and show no OSD.
     Shift+XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "1%-"; }
     Shift+XF86MonBrightnessUp   allow-when-locked=true { spawn "brightnessctl" "set" "+1%"; }
     // Move the current workspace to the next monitor (sway: $mod+x)
@@ -794,13 +810,22 @@ binds {
     Mod+Alt+2 { spawn-sh "niri msg output \"$(niri msg --json focused-output | jq -r .name)\" scale 1.25"; }
     Mod+Alt+3 { spawn-sh "niri msg output \"$(niri msg --json focused-output | jq -r .name)\" scale 1.5"; }
     Mod+Alt+4 { spawn-sh "niri msg output \"$(niri msg --json focused-output | jq -r .name)\" scale 2"; }
-    Mod+Shift+B { spawn-sh "pkill -USR1 waybar"; }                  // toggle waybar
     Mod+E { spawn-sh "$HOME/.config/sway/emoji-picker.sh"; }  // emoji picker
     XF86AudioMedia { spawn-sh "alacritty --class speech2text --command uv run --project=prog/scripts prog/scripts/scripts/2text"; }
     Shift+XF86AudioMedia { spawn "/home/diego/prog/launcher-neutralinojs/dist/launcher-neutralinojs/launcher-neutralinojs-linux_x64"; }
-    Mod+Shift+Ctrl+V { spawn-sh "pkill copyq || copyq"; }           // restart copyq
+    Mod+Shift+Ctrl+V { spawn-sh "cliphist wipe"; }                  // wipe clipboard history
     Mod+Shift+T { spawn "pucoti" "20m"; }
     Mod+Shift+Print { spawn-sh "obs-cli recording toggle"; }
     Mod+Shift+A { spawn "anki"; }
-    Mod+Shift+Return { spawn-sh "swaync-client -t -sw"; }           // toggle notif panel
+
+    // --- Noctalia's panels ---
+    Mod+Shift+Return { spawn-sh "qs -c noctalia-shell ipc call notifications toggleHistory"; }
+    Mod+S       { spawn-sh "qs -c noctalia-shell ipc call controlCenter toggle"; }
+    Mod+Shift+S { spawn-sh "qs -c noctalia-shell ipc call settings toggle"; }
+    Mod+Shift+B { spawn-sh "qs -c noctalia-shell ipc call bar toggle"; }
+    Mod+Shift+D { spawn-sh "qs -c noctalia-shell ipc call notifications toggleDND"; }
+    // Caffeine. This takes a Wayland idle inhibitor, which niri honours by not
+    // reporting the session idle — so it holds off swayidle's lock and hibernate
+    // too, even though noctalia's own idle service is disabled.
+    Mod+Shift+C { spawn-sh "qs -c noctalia-shell ipc call idleInhibitor toggle"; }
 }

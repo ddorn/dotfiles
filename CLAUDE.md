@@ -8,11 +8,33 @@ A [chezmoi](https://chezmoi.io)-managed dotfiles repository for Diego, targeting
 
 Configs are written for that machine directly: there is no machine-role or per-host mechanism, and no `.chezmoi.toml.tmpl`.
 
+## The shell layer is noctalia
+
+Under niri, [noctalia](https://noctalia.dev) v4 (the `noctalia-shell` package) owns the bar, launcher, clipboard history, notifications, wallpaper, OSDs, night light and tray. `dot_config/{waybar,swaync,copyq}` serve the sway fallback, which has no noctalia and wires these up itself.
+
+v4 is a Quickshell config, not a program: it starts as `qs -c noctalia-shell` and is driven by `qs -c noctalia-shell ipc call <target> <function>`. `ipc show` lists every target and function, and is the thing to re-check after an upgrade — niri binds a name that no longer exists without complaining.
+
+Do not confuse it with the `noctalia` package, which is v5: a standalone `/usr/bin/noctalia` binary with a `noctalia msg` CLI and a completely different TOML config. The two share a config directory name and nothing else. The v5 setup lives on the `noctalia-v5` branch.
+
+**noctalia owns its own settings file.** `~/.config/noctalia/settings.json` is written back by the shell every time anything changes in the GUI, so chezmoi cannot hold its content. It is tracked as `create_settings.json`: chezmoi writes it only when it is absent and never touches it again. So the tracked file is a seed for a fresh machine, not a live description of the settings — change things in the GUI, and only fold a value back into the seed if a rebuild should start with it. The seed carries `settingsVersion` deliberately: without it noctalia reads version 0 and runs every schema migration over the seeded values.
+
+`dot_config/niri/create_noctalia.kdl` is seeded the same way and for a sharper reason. `config.kdl` has `include "noctalia.kdl"`, and **niri treats a missing include as a fatal config error** — so without a seed, a machine where noctalia has not yet applied a theme has no working compositor config at all.
+
+Two of noctalia's optional pacman dependencies are load-bearing here and are not pulled in automatically: `cliphist` (clipboard history — without it Mod+V opens an empty launcher) and `wlsunset` (night light). It has no polkit agent of its own either, so niri spawns `polkit-kde-agent`; nothing else in this session offers an authentication prompt.
+
+Two things deliberately did *not* move to noctalia:
+
+- **Idle and lock stay with swayidle and swaylock.** noctalia's lock screen always draws the desktop wallpaper as its background — there is no lockscreen-wallpaper setting — and putting a chosen image on the lock screen is the entire point of focus-helper. So `idle.enabled` is false in the seed, noctalia never takes niri's `ext-session-lock`, and there is exactly one locker. Note that only one client at a time may hold `ext-session-lock-v1`: if noctalia is ever given the lock as well, whichever loses is dropped by niri, and if that is noctalia the whole shell dies. Caffeine (`idleInhibitor`) still works across this split, because it takes a Wayland idle inhibitor that niri honours by not reporting the session idle at all.
+- **Media keys stay on playerctl.** noctalia's `media` IPC is the same MPRIS calls behind a shell that has to be running, and shows no OSD for them by default.
+
+Theme templates propagate the palette to alacritty and niri only. Each writes a *generated*, untracked file — `~/.config/alacritty/themes/noctalia.toml` and `~/.config/niri/noctalia.kdl` — and hooks it into the real config with a single import/include line. Those two lines are committed, which is what keeps chezmoi and noctalia off each other: noctalia's hook looks for its marker, finds the committed line and leaves the tracked file alone. Both tools resolve the generated file *before* the file that pulls it in, so a colour set in `alacritty.toml` or in niri's `layout` block would beat the palette — hence neither sets any.
+
 ## Chezmoi file naming conventions
 
 - `dot_foo` → `~/.foo`
 - `private_dot_foo` → `~/.foo` with mode 600
 - `executable_foo` → `~/foo` with mode 755
+- `create_foo` → `~/foo`, written only if absent and never updated afterwards
 - `foo.tmpl` → processed as a Go template before writing
 - `run_onchange_*.sh/py` → re-executed whenever the file content changes
 - `run_once_*.sh` → executed only once ever
