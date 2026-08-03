@@ -293,10 +293,15 @@ layout {
 // which may be more convenient to use.
 // See the binds section below for more spawn examples.
 
-// Noctalia is the shell layer: bar, launcher, clipboard, notifications,
-// wallpaper, OSDs, night light, tray. It is a Quickshell config rather than a
-// program of its own, hence the `qs -c`. Settings live in
-// ~/.config/noctalia/settings.json — see the note above the binds below.
+// Noctalia (v4, the noctalia-shell package) is the shell layer: bar, launcher,
+// clipboard, notifications, wallpaper, OSDs, night light, tray. It is a
+// Quickshell config rather than a program of its own, hence the `qs -c`.
+// Settings live in ~/.config/noctalia/settings.json — see the note above the
+// binds below.
+//
+// Two of its *optional* pacman deps are load-bearing here and are not pulled in
+// automatically: cliphist (else Mod+V opens an empty launcher) and wlsunset
+// (night light).
 spawn-at-startup "qs" "-c" "noctalia-shell"
 
 // Noctalia has no polkit agent, and nothing else in this session offers an

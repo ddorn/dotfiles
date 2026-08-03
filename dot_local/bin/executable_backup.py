@@ -288,6 +288,8 @@ def backup_to(remote: str):
         rprint("[yellow]Skipping integrity check (not monday)")
 
 
+# forget and prune are deliberately separate commands, run by hand: the automated
+# `backup` never expires a snapshot, so a bug here can't quietly eat history.
 @app.command()
 def forget(remote: str, dry_run: bool = typer.Option(False, "--dry-run", help="Don't remove anything.")):
     """Forget snapshots from a remote."""
