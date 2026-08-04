@@ -21,6 +21,9 @@ input {
             // localectl set-x11-keymap.
 
             // Diego (sway: xkb_layout us,fr / caps:swapescape,compose:ralt)
+            // Shift+Backspace → Delete is a keyd rule in /etc/keyd/default.conf.
+            // An xkb option reaches Delete only on Backspace's shifted level,
+            // where Shift stays attached: terminals send \e[3;2~, Chromium cuts.
             layout "us,fr"
             options "caps:swapescape,compose:ralt"
         }
