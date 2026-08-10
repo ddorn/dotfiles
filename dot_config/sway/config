@@ -267,7 +267,7 @@ output "Samsung Electric Company LS24A600U H4ZT700007" pos 0 -1440
 # idle management
 exec swayidle -w \
          timeout 300 'swaylock -f -c 000000' \
-         timeout 1200 'systemctl hibernate' \
+         timeout 1200 'systemctl suspend' \
          before-sleep 'swaylock -f -c 000000'
 
 # Emoji picker

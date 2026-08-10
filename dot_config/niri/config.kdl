@@ -341,7 +341,9 @@ workspace "chat"
 // point is putting a chosen image on the lock screen — so swaylock keeps the job
 // it already does here and in the sway fallback. noctalia therefore never takes
 // niri's ext-session-lock, and there is no locker to conflict with.
-spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f -c 000000' timeout 1200 'systemctl hibernate' before-sleep 'swaylock -f -c 000000'"
+// The deep-idle action is suspend, not hibernate: this machine has no swap, so
+// hibernate has nothing to write the image to and simply fails.
+spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f -c 000000' timeout 1200 'systemctl suspend' before-sleep 'swaylock -f -c 000000'"
 
 // Apps
 spawn-at-startup "obsidian"
@@ -846,7 +848,7 @@ binds {
     Mod+Shift+B { spawn-sh "qs -c noctalia-shell ipc call bar toggle"; }
     Mod+Shift+D { spawn-sh "qs -c noctalia-shell ipc call notifications toggleDND"; }
     // Caffeine. This takes a Wayland idle inhibitor, which niri honours by not
-    // reporting the session idle — so it holds off swayidle's lock and hibernate
+    // reporting the session idle — so it holds off swayidle's lock and suspend
     // too, even though noctalia's own idle service is disabled.
     Mod+Shift+C { spawn-sh "qs -c noctalia-shell ipc call idleInhibitor toggle"; }
 }
