@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Keep a few chosen windows on whatever workspace is in view.
+"""Keep a few chosen floating windows on whatever workspace is in view.
 
 niri has no sticky windows, so this follows `niri msg event-stream` and, every
 time a workspace becomes active, moves the sticky windows there. It only reacts
 to workspaces on the output a window is already on: with several screens each
 window stays on its screen and follows that screen's workspace switches.
+
+Only floating windows follow: tiling one of them is how you pin it to a single
+workspace.
 
 Only one copy runs at a time (flock), so launching it from a hotkey as well as
 at startup is safe.
@@ -35,6 +38,8 @@ def follow(workspace_id: int) -> None:
     for window in niri("windows"):
         if window["app_id"] not in STICKY_APP_IDS:
             continue
+        if not window["is_floating"]:
+            continue  # Tiled: it is a column of the workspace, let it stay there.
         current = workspaces.get(window["workspace_id"])
         if current is None or current["id"] == target["id"]:
             continue
