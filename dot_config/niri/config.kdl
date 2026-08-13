@@ -360,7 +360,7 @@ spawn-at-startup "iwgtk" "-i"
 spawn-at-startup "blueman-applet"
 spawn-sh-at-startup "syncthingtray-qt6 --wait"
 spawn-at-startup "udiskie" "--tray"
-spawn-at-startup "pucoti2"
+spawn-at-startup "pucoti"
 // Sticky windows (pucoti), which niri has no native equivalent of. Disabled;
 // the script stays in ~/.local/bin, just nothing starts it.
 // spawn-at-startup "/home/diego/.local/bin/niri-sticky.py"
@@ -531,7 +531,7 @@ binds {
     // Diego: terminal moved to Mod+Return; launcher is noctalia's.
     Mod+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
     // Sway muscle memory: Mod+T = pucoti timer.
-    Mod+T { spawn "pucoti2"; }
+    Mod+T { spawn "pucoti"; }
     // Noctalia is driven by Quickshell's IPC, so every one of its binds is
     // `qs -c noctalia-shell ipc call <target> <function>`. `qs -c noctalia-shell
     // ipc show` lists every target and function, and is the place to check after

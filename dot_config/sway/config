@@ -293,7 +293,7 @@ bindsym $mod+shift+v exec copyq toggle
 bindsym $mod+shift+ctrl+v exec pkill copyq || copyq
 
 # Timer
-bindsym $mod+t exec pucoti2
+bindsym $mod+t exec pucoti
 bindsym $mod+shift+t exec pucoti 20m
 for_window [title="^PUCOTI$"] floating enable, sticky enable
 for_window [title="^Pucoti$"] floating enable, sticky enable
@@ -318,7 +318,7 @@ exec iwgtk -i
 exec blueman-applet
 exec syncthingtray-qt6 --wait
 exec udiskie --tray
-exec pucoti2
+exec pucoti
 
 # Notification daemon
 exec swaync
