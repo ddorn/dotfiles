@@ -16,3 +16,5 @@ node_modules
 .stignore
 
 **/.claude/.cc-writes/
+**/.claude/worktrees
+**/.claude/settings.local.json

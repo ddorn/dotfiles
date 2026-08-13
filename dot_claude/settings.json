@@ -58,7 +58,6 @@
         "~/.cache/uv"
       ]
     }
-
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
