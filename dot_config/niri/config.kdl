@@ -766,8 +766,8 @@ binds {
     Mod+Shift+Equal { set-window-height "+10%"; }
 
     // Move the focused window between the floating and the tiling layout.
-    Mod+Space       { toggle-window-floating; }
-    Mod+Shift+Space { switch-focus-between-floating-and-tiling; }
+    Mod+Space       { switch-focus-between-floating-and-tiling; }
+    Mod+Shift+Space { toggle-window-floating; }
     // Clipboard history: noctalia's launcher in its clipboard mode, over the
     // cliphist database. Same key as copyq had under sway.
     Mod+V { spawn-sh "qs -c noctalia-shell ipc call launcher clipboard"; }
