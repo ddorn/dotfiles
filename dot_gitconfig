@@ -1,0 +1,8 @@
+[user]
+	email = diego.dorn@free.fr
+	name = ddorn
+[init]
+	defaultBranch = main
+[fetch]
+	# Drop local remote-tracking branches whose upstream is gone.
+	prune = true

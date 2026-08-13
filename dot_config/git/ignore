@@ -14,3 +14,5 @@ node_modules
 .stfolder
 .stfolder.*
 .stignore
+
+**/.claude/.cc-writes/
