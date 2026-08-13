@@ -5,7 +5,7 @@
     "terminalCommand": "alacritty -e"
   },
   "colorSchemes": {
-    "predefinedScheme": "Ayu",
+    "predefinedScheme": "Monokai",
     "darkMode": true
   },
   "dock": {
