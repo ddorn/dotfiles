@@ -51,8 +51,8 @@ start-sway() {
 }
 
 mirror() {
-    # Mirror the focused output onto the other one. Works under both niri and
-    # sway, detected via their respective IPC socket env vars.
+    # Mirror the focused output onto the other one. Works under niri, sway and
+    # i3, detected via their respective IPC socket env vars.
     local focused other
     if [[ -n "$NIRI_SOCKET" ]]; then
         focused=$(niri msg --json focused-output | jq -r '.name')
@@ -73,8 +73,24 @@ mirror() {
         sleep 0.5
         swaymsg "[app_id=\"wl_mirror\"]" move output "$other"
         swaymsg "[app_id=\"wl_mirror\"]" fullscreen
+    elif [[ -n "$I3SOCK" ]]; then
+        # wl-mirror is Wayland-only, so X11 mirrors in hardware instead: put the
+        # other output at the same origin as the focused one and scale it to the
+        # focused resolution, so mismatched panels still show the whole screen.
+        # Unlike wl-mirror this outlives the shell — `i3-msg reload` re-runs the
+        # xrandr line in ~/.config/i3/config and puts the outputs side by side
+        # again.
+        focused=$(i3-msg -t get_workspaces | jq -r '.[] | select(.focused) | .output')
+        other=$(xrandr --query | awk '/ connected/ {print $1}' | grep -vx "$focused" | head -n 1)
+        if [[ -z "$other" ]]; then echo "No other output found"; return 1; fi
+        local geometry
+        geometry=$(xrandr --query | awk -v o="$focused" \
+            '$1 == o && / connected/ { match($0, /[0-9]+x[0-9]+\+/); print substr($0, RSTART, RLENGTH - 1) }')
+        if [[ -z "$geometry" ]]; then echo "Could not read the mode of $focused"; return 1; fi
+        xrandr --output "$other" --auto --same-as "$focused" --scale-from "$geometry"
+        echo "$focused mirrored onto $other — run 'i3-msg reload' to undo."
     else
-        echo "mirror: no niri (\$NIRI_SOCKET) or sway (\$SWAYSOCK) session detected"; return 1
+        echo "mirror: no niri (\$NIRI_SOCKET), sway (\$SWAYSOCK) or i3 (\$I3SOCK) session detected"; return 1
     fi
 }
 
