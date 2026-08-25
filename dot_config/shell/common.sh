@@ -109,6 +109,8 @@ alias backuplist='du -X ~/.config/restic/exclude ~ -h -t 1M | sort -h'
 alias scale='swaymsg output "*" scale'
 alias qwerty="swaymsg input '*' xkb_layout fr"
 alias azerty="swaymsg input '*' xkb_layout us"
+# Keep the laptop fully awake for a while, lid closed included: `nosleep 60m`.
+alias nosleep='systemd-inhibit --what=handle-lid-switch:idle:sleep --why="staying awake on purpose" sleep'
 
 # ── STARTUP ──────────────────────────────────────────────────────────────────
 if [[ -z $DISPLAY && "$(tty)" == /dev/tty1 ]]; then
