@@ -13,6 +13,7 @@ from functools import cache
 import os
 import shlex
 import socket
+import sys
 import json
 from pathlib import Path
 import subprocess
@@ -135,6 +136,12 @@ def backup(yes: bool = typer.Option(False, help="Don't ask for confirmation"), i
     changes, big_dirs = big_dirs_change()
     if not yes and changes and not Confirm.ask("Do you want to continue?"):
         raise typer.Abort()
+
+    # Last question of the run, asked before anything slow begins. Leftover locks are found
+    # per-remote but dealt with in one go: the whole point of a backup is being able to walk
+    # away from it, so nothing may need a human again once it starts.
+    if someone_is_watching():
+        offer_to_unlock(*(remote.name for remote in config().remotes))
 
     # Only now is a backup actually happening: a snoozed or declined run pings nothing,
     # so healthchecks reports it as a missed backup rather than a successful one.
@@ -262,6 +269,74 @@ def list_big_dirs(threshold: str = "50M", save: bool = False):
         print(f"✅ Saved to {file}")
 
 
+class Lock(BaseModel):
+    """One entry of restic's lock list, as `restic cat lock <id>` prints it."""
+
+    time: datetime.datetime
+    hostname: str
+    username: str = ""
+    pid: int = 0
+    exclusive: bool = False
+    """Only `check`, `prune` and `forget` take an exclusive lock. `backup` shares."""
+
+
+def list_locks(remote: str) -> dict[str, Lock]:
+    """Every lock currently on a remote, keyed by ID."""
+    ids = call_restic(remote, "list", "locks", capture=True).split()
+
+    locks = {}
+    for id in ids:
+        try:
+            locks[id] = Lock.model_validate_json(call_restic(remote, "cat", "lock", id, capture=True))
+        except subprocess.CalledProcessError:
+            # A lock that disappeared between listing and reading is one fewer problem.
+            continue
+    return locks
+
+
+def someone_is_watching() -> bool:
+    """Whether there is a person on the other end who can answer a prompt."""
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def offer_to_unlock(*remotes: str):
+    """Show the locks across every remote at once, and offer to remove the stale ones.
+
+    A lock outlives the process that took it whenever restic dies without cleaning up, and a
+    laptop suspending mid-backup is enough to do that. Nothing notices for days: `backup`
+    only ever takes a shared lock, so it steps around the debris quite happily. The weekly
+    `check` is what wants an exclusive lock, so a single abandoned lock fails the check on
+    every machine sharing the repo, on the same night, up to a week after the cause.
+
+    Every remote is inspected before anything is asked, because this runs once at the start
+    of a backup and then nobody is watching the terminal again. One listing, one question.
+
+    Prompts, so callers must check `someone_is_watching()` first unless a person asked for
+    this by name. A timer must never block on a prompt, and must never decide by itself
+    that another machine's lock is safe to delete.
+    """
+    locked = {remote: locks for remote in remotes if (locks := list_locks(remote))}
+    if not locked:
+        rprint(f"[green]No locks on {', '.join(remotes)}")
+        return
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for remote, locks in locked.items():
+        rprint(f"[yellow]{remote} has {len(locks)} lock(s):")
+        for id, lock in locks.items():
+            age = datetime.timedelta(seconds=int((now - lock.time).total_seconds()))
+            kind = "exclusive" if lock.exclusive else "shared"
+            rprint(f"  {id[:8]}  {kind:<9}  {lock.username}@{lock.hostname} (PID {lock.pid})  {age} old")
+
+    if not Confirm.ask("Remove the stale ones?", default=True):
+        return
+
+    # Never `--remove-all`: plain `unlock` drops only what restic can argue is dead, and
+    # deleting the lock of a live `prune` while it writes is how a repository gets corrupted.
+    for remote in locked:
+        call_restic(remote, "unlock")
+
+
 @app.command()
 def backup_to(remote: str):
     """Backup to a given remote."""
@@ -315,6 +390,12 @@ def prune(remote: str, dry_run: bool = typer.Option(False, "--dry-run", help="Do
         *(["--dry-run"] if dry_run else []),
         *(["--verbose"] if VERBOSE else []),
     )
+
+
+@app.command()
+def unlock(remotes: list[str] = typer.Argument(None, help="Remotes to check. Default: all of them.")):
+    """🔓 Show the locks on every remote and offer to remove the stale ones."""
+    offer_to_unlock(*(remotes or [remote.name for remote in config().remotes]))
 
 
 @app.command()
@@ -428,11 +509,13 @@ def ping_healthcheck(endpoint: str = "", body: str = ""):
         rprint(f"[yellow]Warning: healthcheck ping failed: {e}")
 
 
-def call_restic(remote: str, *args: str | Path):
+def call_restic(remote: str, *args: str | Path, capture: bool = False):
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = get_restic_password()
 
     cmd: list[str | Path] = ["restic", "-r", config().remote(remote).url, *args]
+    if capture:
+        return check_output(cmd, env=env)
     return run(cmd, env=env)
 
 
@@ -445,11 +528,13 @@ def run(command: Sequence[str | Path], env: dict | None = None):
     return subprocess.check_call(command, env=env)
 
 
-def check_output(command: list[str | Path]):
-    if VERBOSE:
-        rprint(f"[grey]Running: {' '.join(map(str, command))}", flush=True)
+def check_output(command: list[str | Path], env: dict | None = None):
+    command = [str(arg) for arg in command]
 
-    return subprocess.check_output(command, text=True)
+    if VERBOSE:
+        rprint(f"[grey]Running: {' '.join(command)}", flush=True)
+
+    return subprocess.check_output(command, text=True, env=env)
 
 
 # Utilities
