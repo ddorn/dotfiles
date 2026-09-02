@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""Search for emojis in plain language: `emoji happy cat` → 😺 😸 😻 ...
+
+With no arguments it loops, answering one query per line until EOF; the loop
+keeps the conversation, so follow-ups like "more" or "sadder ones" work.
+
+Stdlib only and a small, fast model: the point is that the answer lands before
+you'd have finished scrolling a picker.
+"""
+
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+MODEL = os.environ.get("EMOJI_MODEL", "openai/gpt-oss-20b")
+URL = "https://api.groq.com/openai/v1/chat/completions"
+SYSTEM = (
+    "You act as a search engine for emojis. List the emojis matching the input, "
+    "separated by a space: around 10, never fewer than 5, up to 20 when many fit. "
+    "Obvious matches first, then looser associations. Every emoji must be distinct: "
+    "never repeat one, and stop rather than pad the list. Output emojis only, with "
+    "no explanation, comment or other text."
+)
+
+# The key lives with the rest of Diego's API keys rather than in the environment,
+# so fall back to reading it out of there.
+ENV_FILE = Path.home() / "prog/scripts/.env"
+
+
+def api_key() -> str:
+    key = os.environ.get("GROQ_API_KEY")
+    if key:
+        return key
+    try:
+        text = ENV_FILE.read_text()
+    except OSError:
+        text = ""
+    match = re.search(r"^\s*export\s+GROQ_API_KEY=(.*)$", text, re.MULTILINE)
+    if not match:
+        sys.exit(f"No GROQ_API_KEY in the environment nor in {ENV_FILE}")
+    return match.group(1).strip().strip("\"'")
+
+
+def search(messages: list[dict], key: str) -> str:
+    body = {
+        "model": MODEL,
+        "temperature": 0.5,
+        # gpt-oss counts reasoning tokens here, so leave room or the reply comes back empty.
+        "max_tokens": 400,
+        "messages": [{"role": "system", "content": SYSTEM}, *messages],
+    }
+    if MODEL.startswith("openai/gpt-oss"):
+        # Those reason by default; nothing here needs it, and it costs latency.
+        # Other models reject the parameter or spell its values differently.
+        body["reasoning_effort"] = "low"
+    body = json.dumps(body).encode()
+    request = urllib.request.Request(
+        URL,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            # Groq sits behind Cloudflare, which 403s urllib's default agent.
+            "User-Agent": "curl/8",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        payload = json.load(response)
+    return dedupe(payload["choices"][0]["message"]["content"])
+
+
+def dedupe(answer: str) -> str:
+    """Small models like to pad the list by repeating themselves. Trim that."""
+    # Anything with ASCII letters in it is the model talking, not an emoji.
+    tokens = [word for word in answer.split() if not re.search(r"[A-Za-z]", word)]
+    return " ".join(list(dict.fromkeys(tokens))[:20])
+
+
+def show(messages: list[dict], query: str, key: str) -> None:
+    """Answer `query` in the context of `messages`, appending both to it."""
+    query = query.strip()
+    if not query:
+        return
+    messages.append({"role": "user", "content": query})
+    try:
+        answer = search(messages, key)
+    except urllib.error.HTTPError as error:
+        messages.pop()
+        print(f"{error.code} {error.reason}: {error.read().decode()}", file=sys.stderr)
+    except (urllib.error.URLError, TimeoutError, KeyError) as error:
+        messages.pop()
+        print(f"Emoji search failed: {error}", file=sys.stderr)
+    else:
+        messages.append({"role": "assistant", "content": answer})
+        print(answer)
+
+
+def main() -> None:
+    key = api_key()
+    messages = []
+
+    if len(sys.argv) > 1:
+        show(messages, " ".join(sys.argv[1:]), key)
+        return
+
+    while True:
+        try:
+            query = input("emoji> ")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        show(messages, query, key)
+
+
+if __name__ == "__main__":
+    main()
