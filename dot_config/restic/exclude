@@ -6,6 +6,7 @@
 **/.mypy_cache
 **/.next
 **/.next-dev
+**/.prek
 **/.trash
 **/.venv
 **/Build
@@ -48,8 +49,12 @@
 /home/diego/.local/share/torbrowser
 /home/diego/.local/share/uv
 /home/diego/.local/share/virtualenv
+/home/diego/.local/share/zed/extensions
+/home/diego/.local/share/zed/external_agents
 /home/diego/.local/state/vs-kubernetes
 /home/diego/.matlab
+/home/diego/.mozilla/firefox/*/favicons.sqlite
+/home/diego/.mozilla/firefox/*/places_semantic.sqlite
 /home/diego/.mozilla/firefox/*/storage/archives
 /home/diego/.mozilla/firefox/*/storage/default/chrome
 /home/diego/.mozilla/firefox/*/storage/default/http*

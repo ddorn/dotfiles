@@ -374,8 +374,8 @@ def forget(remote: str, dry_run: bool = typer.Option(False, "--dry-run", help="D
         "--keep-last", "3",
         "--keep-daily", "8",
         "--keep-weekly", "5",
-        "--keep-monthly", "18",
-        "--keep-yearly", "1000",
+        "--keep-monthly", "unlimited",
+        "--keep-yearly", "unlimited",
         *(["--dry-run"] if dry_run else []),
         *(["--verbose"] if VERBOSE else []),
     )
