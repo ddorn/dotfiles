@@ -131,5 +131,16 @@ else
     ctx_part=$(printf "${DIM}ctx --${RESET}")
 fi
 
+# ── Peer name ────────────────────────────────────────────────────────────────
+# The name other sessions use to SendMessage this one (e.g. `chezmoi-28`). It
+# is not in the stdin JSON; the session registry in ~/.claude/sessions holds
+# one file per running process, keyed by pid, with the sessionId inside.
+peer_part=""
+if [ -n "$session_id" ]; then
+    peer=$(jq -r --arg s "$session_id" 'select(.sessionId == $s) | .name // empty' \
+        ~/.claude/sessions/*.json 2>/dev/null | head -n1)
+    [ -n "$peer" ] && peer_part=$(printf "  ${DIM}${peer}${RESET}")
+fi
+
 # ── Single line output ────────────────────────────────────────────────────────
-echo "${model_part}  ${dir_part}  ${usage_part}  ${ctx_part}"
+echo "${model_part}  ${dir_part}  ${usage_part}  ${ctx_part}${peer_part}"
